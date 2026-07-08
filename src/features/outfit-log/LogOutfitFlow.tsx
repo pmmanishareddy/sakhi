@@ -215,6 +215,8 @@ export function LogOutfitFlow() {
   }
 
   const logOutfit = async () => {
+    if (saving) return
+    setSaving(true)
     try {
       if (user) {
         let imageUrl: string | undefined
@@ -237,6 +239,7 @@ export function LogOutfitFlow() {
         setLastOutfitId(outfit.id)
       }
     } catch { /* toast anyway */ }
+    setSaving(false)
 
     const hasNewItems = matchedResults && (matchedResults.new_items.length > 0 || rejectedMatches.length > 0)
     if (step === 3 && hasNewItems) {

@@ -247,16 +247,37 @@ export async function toggleLaundryStatus(id: string, status: 'clean' | 'in_laun
 
 // ── Image Upload ──
 
+// Phone photos are 3-8 MB; downscale before upload so saving isn't network-bound.
+// Falls back to the original on any decode failure (e.g. unsupported formats).
+async function compressImage(file: File, maxDim = 1600, quality = 0.82): Promise<Blob> {
+  if (file.size < 300_000) return file
+  try {
+    const bitmap = await createImageBitmap(file)
+    const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.round(bitmap.width * scale)
+    canvas.height = Math.round(bitmap.height * scale)
+    canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    bitmap.close()
+    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', quality))
+    return blob && blob.size < file.size ? blob : file
+  } catch {
+    return file
+  }
+}
+
 export async function uploadImage(file: File, folder: 'items' | 'outfits'): Promise<string> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
-  const ext = file.name.split('.').pop() || 'webp'
+  const blob = await compressImage(file)
+  const compressed = blob !== file
+  const ext = compressed ? 'jpg' : (file.name.split('.').pop() || 'webp')
   const path = `${user.id}/${folder}/${generateId()}.${ext}`
 
   const { error } = await supabase.storage
     .from('wardrobe-images')
-    .upload(path, file, { contentType: file.type })
+    .upload(path, blob, { contentType: compressed ? 'image/jpeg' : file.type })
   if (error) throw error
 
   const { data: { publicUrl } } = supabase.storage
