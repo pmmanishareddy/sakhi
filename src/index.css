@@ -94,6 +94,14 @@ input, textarea {
 .animate-fade-up { animation: fadeUp 0.5s ease-out both; }
 .animate-slide-in { animation: slideIn 0.3s ease-out both; }
 
+/* Toast: rise with a slight overshoot, settles like a spring */
+@keyframes toastIn {
+  0% { opacity: 0; transform: translate(-50%, 16px) scale(0.92); }
+  65% { opacity: 1; transform: translate(-50%, -3px) scale(1.01); }
+  100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+.toast-in { animation: toastIn 0.42s cubic-bezier(0.22, 1.2, 0.36, 1) both; }
+
 /* #3 Cascade load for grid items */
 .cascade-item { animation: fadeUp 0.4s ease-out both; }
 
