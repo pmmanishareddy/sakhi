@@ -1,0 +1,152 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #121212;
+  --color-card: #1C1C1C;
+  --color-border: rgba(255,255,255,0.06);
+  --color-text-primary: #F0F0F0;
+  --color-text-secondary: #999;
+  --color-text-tertiary: #555;
+  --color-accent: #C88B6E;
+  --color-accent-soft: rgba(200,139,110,0.10);
+  --color-success: #66BB6A;
+  --color-warning: #FFB74D;
+  --color-danger: #ef5350;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+html, body {
+  height: 100% !important;
+  width: 100% !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  background: #0E0E0E !important;
+  color: #F0F0F0;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+
+#root {
+  width: 375px !important;
+  height: 812px !important;
+  max-height: 100vh !important;
+  background: #121212 !important;
+  border-radius: 44px !important;
+  overflow: hidden !important;
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  flex-shrink: 0 !important;
+  border: 1px solid rgba(255,255,255,0.04) !important;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.6) !important;
+}
+
+@media (max-width: 430px) {
+  #root {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+}
+
+@media (display-mode: standalone) {
+  #root {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+}
+
+input, textarea {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-appearance: none;
+}
+
+::-webkit-scrollbar { display: none; }
+* { scrollbar-width: none; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.animate-fade-up { animation: fadeUp 0.5s ease-out both; }
+.animate-slide-in { animation: slideIn 0.3s ease-out both; }
+
+/* #3 Cascade load for grid items */
+.cascade-item { animation: fadeUp 0.4s ease-out both; }
+
+/* #4 Ambient gradient for generating screen */
+@keyframes gradientShift {
+  0%, 100% { background-position: 50% 0%; }
+  50% { background-position: 50% 100%; }
+}
+.generating-ambient {
+  background: radial-gradient(ellipse at 50% 30%, rgba(200,139,110,0.10) 0%, transparent 60%),
+              radial-gradient(ellipse at 30% 80%, rgba(200,139,110,0.06) 0%, transparent 50%);
+  background-size: 100% 200%;
+  animation: gradientShift 4s ease-in-out infinite;
+}
+
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(200,139,110,0.15), 0 0 60px rgba(200,139,110,0.08); }
+  50% { box-shadow: 0 0 30px rgba(200,139,110,0.3), 0 0 80px rgba(200,139,110,0.15); }
+}
+.glow-orb { animation: glowPulse 2.5s ease-in-out infinite; }
+
+/* #2 Sakhi nav glow */
+@keyframes navGlow {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.35; }
+}
+.sakhi-glow {
+  position: relative;
+}
+.sakhi-glow::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(200,139,110,0.3) 0%, transparent 70%);
+  animation: navGlow 3s ease-in-out infinite;
+  z-index: -1;
+}
+
+/* #5 Tactile press on cards */
+.card-press {
+  transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
+}
+.card-press:active {
+  transform: scale(0.96);
+  filter: brightness(0.88);
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.app-shell {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
