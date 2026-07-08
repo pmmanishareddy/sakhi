@@ -31,7 +31,39 @@ Return a JSON array of 3-5 gap cards:
   "pairing": "optional - e.g. Would pair with 8 existing items"
 }]
 
+Categories in the stats are pre-normalized, and the garment role counts are authoritative — use those exact numbers for any counting claims (e.g. total sarees, total bottoms). Never recount from the raw list.
+
 Be specific — reference actual items and counts from the inventory. Return ONLY valid JSON, no markdown.`
+
+// Real data has drifted variants ("Dress"/"Dresses", "Saree"/"Sarees") — normalize
+// before counting so the model never has to repair taxonomy and miscount
+const CATEGORY_CANON: Record<string, string> = {
+  'dresses': 'Dress', 'dress': 'Dress', 'jumpsuits': 'Jumpsuit', 'jumpsuit': 'Jumpsuit',
+  'sarees': 'Saree', 'saree': 'Saree', 'sari': 'Saree',
+  'saree blouses': 'Saree Blouse', 'saree blouse': 'Saree Blouse',
+  'tops': 'Top', 'top': 'Top', 'shirts': 'Shirt', 'shirt': 'Shirt',
+  't-shirts': 'T-Shirt', 't-shirt': 'T-Shirt', 'blouses': 'Blouse', 'blouse': 'Blouse',
+  'bottoms': 'Pants', 'bottom': 'Pants', 'pants': 'Pants', 'trousers': 'Pants',
+  'jeans': 'Jeans', 'skirts': 'Skirt', 'skirt': 'Skirt', 'shorts': 'Shorts', 'leggings': 'Leggings',
+  'kurtas': 'Kurta', 'kurta': 'Kurta', 'dupattas': 'Dupatta', 'dupatta': 'Dupatta',
+  'jackets': 'Jacket', 'jacket': 'Jacket', 'blazers': 'Blazer', 'blazer': 'Blazer',
+  'shoes': 'Shoes', 'sneakers': 'Sneakers', 'sandals': 'Sandals', 'heels': 'Heels', 'flats': 'Flats',
+  'bags': 'Bag', 'bag': 'Bag', 'jewelry': 'Jewelry', 'jewellery': 'Jewelry',
+}
+
+function canonCategory(raw: string): string {
+  return CATEGORY_CANON[raw.trim().toLowerCase()] ?? raw.trim()
+}
+
+const ROLE_OF: Record<string, string> = {
+  'Dress': 'dresses', 'Jumpsuit': 'dresses', 'Saree': 'sarees',
+  'Top': 'tops', 'Shirt': 'tops', 'T-Shirt': 'tops', 'Blouse': 'tops',
+  'Kurta': 'ethnic tops', 'Saree Blouse': 'saree blouses',
+  'Pants': 'bottoms', 'Jeans': 'bottoms', 'Skirt': 'bottoms', 'Shorts': 'bottoms', 'Leggings': 'bottoms',
+  'Jacket': 'outerwear', 'Blazer': 'outerwear',
+  'Shoes': 'footwear', 'Sneakers': 'footwear', 'Sandals': 'footwear', 'Heels': 'footwear', 'Flats': 'footwear',
+  'Bag': 'bags', 'Jewelry': 'accessories', 'Dupatta': 'accessories',
+}
 
 serve(async (req) => {
   const corsHeaders = makeCorsHeaders(req.headers.get('origin'))
@@ -61,15 +93,24 @@ serve(async (req) => {
       .eq('user_id', user.id)
       .gte('date', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
 
-    // Compute stats
+    // Compute stats on normalized categories
     const catCounts: Record<string, number> = {}
+    const roleCounts: Record<string, number> = {}
     const colorCounts: Record<string, number> = {}
     const formalityCounts: Record<string, number> = {}
     let totalWorn = 0
+    let missingColor = 0
 
     for (const item of items || []) {
-      catCounts[item.category] = (catCounts[item.category] || 0) + 1
-      colorCounts[item.primary_color] = (colorCounts[item.primary_color] || 0) + 1
+      const cat = canonCategory(item.category)
+      catCounts[cat] = (catCounts[cat] || 0) + 1
+      const role = ROLE_OF[cat] || 'other'
+      roleCounts[role] = (roleCounts[role] || 0) + 1
+      if (!item.primary_color || item.primary_color.toLowerCase() === 'unknown') {
+        missingColor++
+      } else {
+        colorCounts[item.primary_color] = (colorCounts[item.primary_color] || 0) + 1
+      }
       formalityCounts[item.formality] = (formalityCounts[item.formality] || 0) + 1
       totalWorn += item.times_worn
     }
@@ -82,8 +123,9 @@ serve(async (req) => {
 
     let userMessage = `Wardrobe stats:
 - Total items: ${items?.length || 0}
+- Garment role counts (authoritative): ${Object.entries(roleCounts).map(([k, v]) => `${k}: ${v}`).join(', ')}
 - Category distribution: ${Object.entries(catCounts).map(([k, v]) => `${k}: ${v}`).join(', ')}
-- Color distribution: ${Object.entries(colorCounts).map(([k, v]) => `${k}: ${v}`).join(', ')}
+- Color distribution: ${Object.entries(colorCounts).map(([k, v]) => `${k}: ${v}`).join(', ')}${missingColor ? `\n- Items with no color recorded: ${missingColor} (excluded from color distribution — the user hasn't filled these in; "Unknown" is not a color)` : ''}
 - Formality distribution: ${Object.entries(formalityCounts).map(([k, v]) => `${k}: ${v}`).join(', ')}
 - Average wear count: ${items?.length ? (totalWorn / items.length).toFixed(1) : 0}`
 
@@ -126,7 +168,7 @@ serve(async (req) => {
     }
 
     const pipeItems = (items || []).map(i =>
-      `${i.name}|${i.category}|${i.primary_color}|${i.pattern || ''}|${i.formality}|${(i.occasions || []).join('/')}|${i.fabric || ''}|worn ${i.times_worn}x|${i.price ?? ''}`
+      `${i.name}|${canonCategory(i.category)}|${i.primary_color?.toLowerCase() === 'unknown' ? '' : i.primary_color}|${i.pattern || ''}|${i.formality}|${(i.occasions || []).join('/')}|${i.fabric || ''}|worn ${i.times_worn}x|${i.price ?? ''}`
     ).join('\n')
     userMessage += `\n\nFull inventory (name|category|color|pattern|formality|occasions|fabric|worn|price):\n${pipeItems}`
 
