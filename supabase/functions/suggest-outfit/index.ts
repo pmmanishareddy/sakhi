@@ -313,13 +313,10 @@ serve(async (req) => {
 
     const itemMap = new Map(cleanItems.map(i => [i.id, i]))
 
-    // Prefilled "{" forces JSON from the first token — no conversational preamble
-    let text = '{' + await callClaude({
+    // No assistant prefill — the model rejects it; parseJsonResponse strips any preamble
+    let text = await callClaude({
       system: SYSTEM_PROMPT,
-      messages: [
-        { role: 'user', content: userMessage },
-        { role: 'assistant', content: '{' },
-      ],
+      messages: [{ role: 'user', content: userMessage }],
       maxTokens: 512,
     })
     let suggestion = parseJsonResponse(text)
@@ -328,13 +325,12 @@ serve(async (req) => {
     let chosen = suggestion.items.map((i: { id: string }) => itemMap.get(i.id)).filter(Boolean) as WardrobeItem[]
     let violations = findViolations(chosen)
     if (violations.length > 0) {
-      text = '{' + await callClaude({
+      text = await callClaude({
         system: SYSTEM_PROMPT,
         messages: [
           { role: 'user', content: userMessage },
           { role: 'assistant', content: text },
           { role: 'user', content: `Your outfit breaks hard constraints:\n- ${violations.join('\n- ')}\n\nFix these and return the corrected JSON only.` },
-          { role: 'assistant', content: '{' },
         ],
         maxTokens: 512,
       })
