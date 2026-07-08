@@ -200,6 +200,7 @@ BAD: "A striking combination!" / "You'll look amazing!"
 Tell her HOW to wear or style the pieces. Reference specific colors, fabrics, or techniques.
 
 ## OUTPUT — return ONLY this JSON, no markdown, no code fences
+Do NOT write any reasoning, preamble, or commentary. Your response must start with { and end with }.
 
 {
   "items": [{ "id": "<item UUID from inventory>", "role": "top|bottom|one-piece|outerwear|shoes|bag|accessory" }],
@@ -315,13 +316,28 @@ serve(async (req) => {
 
     const itemMap = new Map(cleanItems.map((i: any) => [i.id, i]))
 
-    // No assistant prefill — the model rejects it; parseJson strips any preamble
+    // No assistant prefill — the model rejects it; parseJson strips any preamble.
+    // If the model reasons out loud and truncates the JSON, ask it once to reformat.
     let text = await callClaude({
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userMessage }],
-      maxTokens: 512,
+      maxTokens: 1500,
     })
-    let suggestion = parseJson(text)
+    let suggestion
+    try {
+      suggestion = parseJson(text)
+    } catch {
+      text = await callClaude({
+        system: SYSTEM_PROMPT,
+        messages: [
+          { role: 'user', content: userMessage },
+          { role: 'assistant', content: text },
+          { role: 'user', content: 'Return ONLY the complete JSON object — no reasoning, no preamble. Start with { and end with }.' },
+        ],
+        maxTokens: 1500,
+      })
+      suggestion = parseJson(text)
+    }
 
     // Deterministic guard: if Claude broke an ethnic/western hard rule, retry once with the violation named
     let chosen = suggestion.items.map((i: any) => itemMap.get(i.id)).filter(Boolean)
@@ -334,7 +350,7 @@ serve(async (req) => {
           { role: 'assistant', content: text },
           { role: 'user', content: `Your outfit breaks hard constraints:\n- ${violations.join('\n- ')}\n\nFix these and return the corrected JSON only.` },
         ],
-        maxTokens: 512,
+        maxTokens: 1500,
       })
       suggestion = parseJson(text)
       chosen = suggestion.items.map((i: any) => itemMap.get(i.id)).filter(Boolean)
