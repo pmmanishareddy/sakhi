@@ -167,7 +167,9 @@ export function LogOutfitFlow() {
     if (matchedResults) {
       const matched = matchedResults.matched_items.map(m => ({
         ...m,
-        image_url: m.image_url || items.find(i => i.id === m.id)?.image_url || '',
+        // Prefer the wardrobe store's URL — it's signed; the edge function returns
+        // the stored canonical URL, which no longer serves (bucket is private)
+        image_url: items.find(i => i.id === m.id)?.image_url || m.image_url || '',
         isNew: false,
       }))
       const newItems = matchedResults.new_items.map((n, i) => ({
