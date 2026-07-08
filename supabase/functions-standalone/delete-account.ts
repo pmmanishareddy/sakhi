@@ -40,7 +40,7 @@ serve(async (req) => {
     )
 
     // Remove the user's stored images (item photos + outfit photos)
-    for (const folder of [`${user.id}/items`, `${user.id}/outfits`]) {
+    for (const folder of [`${user.id}/items`, `${user.id}/outfits`, `${user.id}/profile`]) {
       const { data: files } = await admin.storage.from('wardrobe-images').list(folder, { limit: 1000 })
       const paths = (files || []).filter((f: any) => f.id).map((f: any) => `${folder}/${f.name}`)
       if (paths.length) await admin.storage.from('wardrobe-images').remove(paths)

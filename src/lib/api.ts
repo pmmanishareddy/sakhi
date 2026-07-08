@@ -316,7 +316,14 @@ async function compressImage(file: File, maxDim = 1600, quality = 0.82): Promise
   }
 }
 
-export async function uploadImage(file: File, folder: 'items' | 'outfits'): Promise<string> {
+// Sign a single stored URL for display (e.g. the profile photo)
+export async function signImageUrl(url: string | null | undefined): Promise<string> {
+  if (!url) return ''
+  const map = await signUrls([url])
+  return map.get(url) || url
+}
+
+export async function uploadImage(file: File, folder: 'items' | 'outfits' | 'profile'): Promise<string> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 

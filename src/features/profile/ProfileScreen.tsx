@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, Trash2, Sparkles, Shield } from 'lucide-react'
+import { LogOut, Trash2, Sparkles, Shield, Pencil, Camera } from 'lucide-react'
 import { BottomNav } from '../../components/BottomNav'
 import { Toast } from '../../components/Toast'
 import { useAuth } from '../../lib/auth'
-import { getProfile, updateProfile, deleteAccount } from '../../lib/api'
+import { getProfile, updateProfile, deleteAccount, uploadImage, signImageUrl } from '../../lib/api'
 import { CITIES, STYLE_WORDS, OCCASIONS, SHOP_TOGGLES, AVOID_CHIPS } from '../onboarding/Onboarding'
 
 const GENDERS = ['Female', 'Male', 'Non-binary', 'Prefer not to say']
@@ -18,6 +18,10 @@ export function ProfileScreen() {
   const [showDelete, setShowDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [extraPrefs, setExtraPrefs] = useState<Record<string, unknown>>({})
+  const [editing, setEditing] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState('')
+  const [avatarSaving, setAvatarSaving] = useState(false)
+  const avatarRef = useRef<HTMLInputElement>(null)
 
   const [name, setName] = useState('')
   const [gender, setGender] = useState('')
@@ -42,8 +46,41 @@ export function ProfileScreen() {
       setAvoidsNote((prefs.avoids_note as string) || '')
       const { style_words, occasion_frequency, shopping_mindset, avoids: _a, avoids_note, gender: _g, ...rest } = prefs
       setExtraPrefs(rest)
+      if (rest.avatar_url) signImageUrl(rest.avatar_url as string).then(setAvatarUrl)
     }).catch(() => setToast('Could not load profile')).finally(() => setLoading(false))
   }, [])
+
+  const buildPrefs = (extra: Record<string, unknown> = extraPrefs): Record<string, unknown> => {
+    const prefs: Record<string, unknown> = {
+      ...extra,
+      style_words: Array.from(styleWords),
+      occasion_frequency: occasionFreq,
+      shopping_mindset: shopMindset,
+      avoids: Array.from(avoids),
+    }
+    if (avoidsNote.trim()) prefs.avoids_note = avoidsNote.trim()
+    if (gender) prefs.gender = gender
+    return prefs
+  }
+
+  const handleAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAvatarSaving(true)
+    try {
+      const url = await uploadImage(file, 'profile')
+      const nextExtra = { ...extraPrefs, avatar_url: url }
+      await updateProfile({ style_preferences: buildPrefs(nextExtra) })
+      setExtraPrefs(nextExtra)
+      setAvatarUrl(await signImageUrl(url))
+      setToast('Photo updated')
+    } catch {
+      setToast('Could not update photo. Try again.')
+    } finally {
+      setAvatarSaving(false)
+      if (avatarRef.current) avatarRef.current.value = ''
+    }
+  }
 
   const toggleStyleWord = (word: string) => {
     const next = new Set(styleWords)
@@ -61,26 +98,17 @@ export function ProfileScreen() {
   const save = async () => {
     setSaving(true)
     try {
-      const stylePrefs: Record<string, unknown> = {
-        ...extraPrefs,
-        style_words: Array.from(styleWords),
-        occasion_frequency: occasionFreq,
-        shopping_mindset: shopMindset,
-        avoids: Array.from(avoids),
-      }
-      if (avoidsNote.trim()) stylePrefs.avoids_note = avoidsNote.trim()
-      if (gender) stylePrefs.gender = gender
-
       const city = CITIES.find(c => c.name.toLowerCase() === location.trim().toLowerCase())
       await updateProfile({
         display_name: name.trim() || 'Friend',
         occasions: Object.keys(occasionFreq),
-        style_preferences: stylePrefs as Record<string, string>,
+        style_preferences: buildPrefs(),
         location: location.trim() || undefined,
         ...(city ? { currency: city.currency } : {}),
       })
       localStorage.setItem('sakhi_name', name.trim() || 'Friend')
       setToast('Profile saved')
+      setEditing(false)
     } catch {
       setToast('Failed to save. Try again.')
     } finally {
@@ -128,17 +156,91 @@ export function ProfileScreen() {
     <div className="flex flex-col h-full min-h-0 bg-bg">
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="px-7 pt-6 animate-fade-up">
+          <input ref={avatarRef} type="file" accept="image/*" className="hidden" onChange={handleAvatar} />
+
           {/* Header */}
           <div className="flex items-center gap-4 mb-7">
-            <div className="w-14 h-14 rounded-full bg-accent-soft flex items-center justify-center text-xl font-bold text-accent shrink-0">
-              {(name || 'S').charAt(0).toUpperCase()}
-            </div>
+            <button
+              onClick={() => avatarRef.current?.click()}
+              className="relative w-16 h-16 rounded-full shrink-0 bg-accent-soft border-none cursor-pointer p-0 overflow-visible active:scale-95 transition-transform"
+            >
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" className="w-16 h-16 rounded-full object-cover" />
+              ) : (
+                <span className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold text-accent">
+                  {(name || 'S').charAt(0).toUpperCase()}
+                </span>
+              )}
+              <span className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-accent flex items-center justify-center border-2 border-bg">
+                {avatarSaving
+                  ? <span className="w-3 h-3 rounded-full border-[1.5px] border-white border-t-transparent animate-spin" />
+                  : <Camera size={11} className="text-white" />}
+              </span>
+            </button>
             <div className="min-w-0">
-              <h1 className="text-[22px] font-bold tracking-tight">Profile</h1>
+              <h1 className="text-[22px] font-bold tracking-tight truncate">{name || 'Profile'}</h1>
               <div className="text-[12px] text-text-tertiary truncate">{user?.email}</div>
+              {(gender || location) && (
+                <div className="text-[12px] text-text-secondary mt-0.5">{[gender, location].filter(Boolean).join(' · ')}</div>
+              )}
             </div>
           </div>
 
+          {/* ── View mode: compact style profile ── */}
+          {!editing && (
+            <div className="bg-card rounded-[18px] p-5 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[13px] font-semibold text-text-primary">Your style profile</span>
+                <button
+                  onClick={() => setEditing(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent-soft text-accent text-[12px] font-semibold border-none cursor-pointer active:scale-95 transition-transform"
+                >
+                  <Pencil size={12} /> Edit
+                </button>
+              </div>
+
+              {styleWords.size > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-4">
+                  {Array.from(styleWords).map(w => (
+                    <span key={w} className="px-3 py-1.5 rounded-full bg-accent-soft text-accent text-[12px] font-medium">{w}</span>
+                  ))}
+                </div>
+              )}
+
+              {Object.keys(occasionFreq).length > 0 && (
+                <div className="grid grid-cols-2 gap-x-3 gap-y-2 mb-4">
+                  {OCCASIONS.filter(o => occasionFreq[o.name]).map(o => (
+                    <div key={o.name} className="flex items-center gap-2 min-w-0">
+                      <span className="text-[14px]">{o.icon}</span>
+                      <div className="min-w-0">
+                        <div className="text-[12px] text-text-primary truncate">{o.name}</div>
+                        <div className="text-[10px] text-text-tertiary">{occasionFreq[o.name]}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {Object.keys(shopMindset).length > 0 && (
+                <div className="text-[12px] text-text-secondary leading-relaxed mb-3">
+                  {SHOP_TOGGLES.filter(t => shopMindset[t.key]).map(t => shopMindset[t.key] === t.valA ? t.a : t.b).join(' · ')}
+                </div>
+              )}
+
+              {(avoids.size > 0 || avoidsNote) && (
+                <div className="text-[12px] text-text-tertiary leading-relaxed">
+                  <span className="text-text-secondary">Avoids:</span> {[...Array.from(avoids), avoidsNote].filter(Boolean).join(', ')}
+                </div>
+              )}
+
+              {styleWords.size === 0 && Object.keys(occasionFreq).length === 0 && (
+                <p className="text-[12px] text-text-tertiary">No preferences yet — tap Edit to tell Sakhi your style.</p>
+              )}
+            </div>
+          )}
+
+          {/* ── Edit mode ── */}
+          {editing && (<>
           {/* Name */}
           <div className="mb-6">
             <p className="text-[13px] text-text-secondary font-medium mb-2.5">Name</p>
@@ -281,10 +383,18 @@ export function ProfileScreen() {
           <button
             onClick={save}
             disabled={saving || !name.trim()}
-            className="w-full py-4 rounded-[14px] text-[15px] font-semibold bg-accent text-white border-none cursor-pointer active:scale-[0.97] transition-all disabled:opacity-35 disabled:pointer-events-none mb-8"
+            className="w-full py-4 rounded-[14px] text-[15px] font-semibold bg-accent text-white border-none cursor-pointer active:scale-[0.97] transition-all disabled:opacity-35 disabled:pointer-events-none"
           >
             {saving ? 'Saving...' : 'Save Changes'}
           </button>
+          <button
+            onClick={() => setEditing(false)}
+            disabled={saving}
+            className="w-full py-3.5 text-[13px] text-text-tertiary bg-transparent border-none cursor-pointer mb-6"
+          >
+            Cancel
+          </button>
+          </>)}
 
           {/* Account */}
           <p className="text-[13px] text-text-secondary font-medium mb-2.5">Account</p>
