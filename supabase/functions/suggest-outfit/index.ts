@@ -337,9 +337,14 @@ serve(async (req) => {
       suggestion = parseJsonResponse(text)
     }
 
-    // Deterministic guard: if Claude broke an ethnic/western hard rule, retry once with the violation named
+    // Deterministic guard: if Claude broke an ethnic/western hard rule or invented
+    // an item id, retry once with the violation named
+    const idViolations = (items: { id: string }[]) => {
+      const fake = items.filter(i => !itemMap.has(i.id)).map(i => i.id)
+      return fake.length > 0 ? [`These ids do not exist in the wardrobe inventory: ${fake.join(', ')} — use ONLY exact ids from the inventory list`] : []
+    }
     let chosen = suggestion.items.map((i: { id: string }) => itemMap.get(i.id)).filter(Boolean) as WardrobeItem[]
-    let violations = findViolations(chosen)
+    let violations = [...findViolations(chosen), ...idViolations(suggestion.items)]
     if (violations.length > 0) {
       text = await callClaude({
         system: SYSTEM_PROMPT,
@@ -352,7 +357,7 @@ serve(async (req) => {
       })
       suggestion = parseJsonResponse(text)
       chosen = suggestion.items.map((i: { id: string }) => itemMap.get(i.id)).filter(Boolean) as WardrobeItem[]
-      violations = findViolations(chosen)
+      violations = [...findViolations(chosen), ...idViolations(suggestion.items)]
       if (violations.length > 0) {
         // Still invalid — strip saree-family pieces so the outfit degrades safely instead of showing a bad combo
         const hasSaree = chosen.some(isSaree)
@@ -366,11 +371,14 @@ serve(async (req) => {
       }
     }
 
-    suggestion.items = suggestion.items.map((i: { id: string; role: string }) => ({
-      ...i,
-      name: itemMap.get(i.id)?.name || 'Unknown',
-      image_url: itemMap.get(i.id)?.image_url || '',
-    }))
+    // Drop any id that still isn't real — never show an "Unknown" piece
+    suggestion.items = suggestion.items
+      .filter((i: { id: string }) => itemMap.has(i.id))
+      .map((i: { id: string; role: string }) => ({
+        ...i,
+        name: itemMap.get(i.id)!.name,
+        image_url: itemMap.get(i.id)!.image_url || '',
+      }))
 
     return new Response(JSON.stringify({ success: true, outfit: suggestion }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
