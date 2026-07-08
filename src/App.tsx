@@ -15,6 +15,7 @@ import { LogOutfitFlow } from './features/outfit-log/LogOutfitFlow'
 import { OutfitDetail } from './features/outfit-log/OutfitDetail'
 import { ProfileScreen } from './features/profile/ProfileScreen'
 import { MeetSakhi } from './features/onboarding/MeetSakhi'
+import { PrivacyScreen } from './features/onboarding/PrivacyScreen'
 import { useNavigate } from 'react-router-dom'
 import { getProfile } from './lib/api'
 
@@ -59,6 +60,7 @@ function AppRoutes() {
         <Route path="/splash" element={<Splash />} />
         <Route path="/onboarding" element={<Onboarding onComplete={markOnboarded} />} />
         <Route path="/login" element={<LoginScreen />} />
+        <Route path="/privacy" element={<PrivacyScreen />} />
         <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
     )
@@ -68,6 +70,7 @@ function AppRoutes() {
     return (
       <Routes>
         <Route path="/onboarding" element={<Onboarding onComplete={markOnboarded} />} />
+        <Route path="/privacy" element={<PrivacyScreen />} />
         <Route path="*" element={<Navigate to="/onboarding" />} />
       </Routes>
     )
@@ -85,6 +88,7 @@ function AppRoutes() {
       <Route path="/outfit/:id" element={<OutfitDetail />} />
       <Route path="/profile" element={<ProfileScreen />} />
       <Route path="/welcome" element={<MeetSakhiReplay />} />
+      <Route path="/privacy" element={<PrivacyScreen />} />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   )

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, Trash2, Sparkles } from 'lucide-react'
+import { LogOut, Trash2, Sparkles, Shield } from 'lucide-react'
 import { BottomNav } from '../../components/BottomNav'
 import { Toast } from '../../components/Toast'
 import { useAuth } from '../../lib/auth'
@@ -294,6 +294,13 @@ export function ProfileScreen() {
           >
             <Sparkles size={18} className="text-accent" />
             <span className="text-[14px] font-medium text-text-primary">How Sakhi works</span>
+          </button>
+          <button
+            onClick={() => navigate('/privacy')}
+            className="w-full flex items-center gap-3 px-4 py-4 rounded-[14px] bg-card border-none cursor-pointer active:scale-[0.98] transition-transform text-left mb-2.5"
+          >
+            <Shield size={18} className="text-text-secondary" />
+            <span className="text-[14px] font-medium text-text-primary">Privacy</span>
           </button>
           <button
             onClick={handleLogout}

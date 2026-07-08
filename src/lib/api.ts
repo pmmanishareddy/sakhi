@@ -140,6 +140,65 @@ export interface MatchResult {
 
 // ── Wardrobe Items ──
 
+// ── Signed image URLs ──
+// The DB stores canonical (public-form) URLs; the bucket itself is private,
+// so display URLs are signed on read and cached until near expiry. While the
+// bucket is still public, signing failures fall back to the stored URL.
+
+const SIGN_TTL_SECONDS = 7 * 24 * 3600
+const SIGN_CACHE_KEY = 'sakhi_signed_urls'
+
+function loadSignedCache(): Record<string, { u: string; e: number }> {
+  try { return JSON.parse(localStorage.getItem(SIGN_CACHE_KEY) || '{}') } catch { return {} }
+}
+const signedCache = loadSignedCache()
+
+function storagePath(url: string | null | undefined): string | null {
+  const m = url?.match(/\/storage\/v1\/object\/(?:public|sign)\/wardrobe-images\/([^?]+)/)
+  return m ? decodeURIComponent(m[1]) : null
+}
+
+// Strip any signing back to the canonical form — signed URLs expire and must
+// never be written to the database
+export function canonicalImageUrl(url: string): string {
+  const path = storagePath(url)
+  return path ? supabase.storage.from('wardrobe-images').getPublicUrl(path).data.publicUrl : url
+}
+
+async function signUrls(urls: (string | null | undefined)[]): Promise<Map<string, string>> {
+  const now = Date.now()
+  const need = new Set<string>()
+  for (const url of urls) {
+    const path = storagePath(url)
+    if (path && !(signedCache[path]?.e > now + 24 * 3600 * 1000)) need.add(path)
+  }
+  if (need.size) {
+    try {
+      const { data } = await supabase.storage
+        .from('wardrobe-images')
+        .createSignedUrls([...need], SIGN_TTL_SECONDS)
+      for (const d of data || []) {
+        if (d.signedUrl && d.path) signedCache[d.path] = { u: d.signedUrl, e: now + SIGN_TTL_SECONDS * 1000 }
+      }
+      try { localStorage.setItem(SIGN_CACHE_KEY, JSON.stringify(signedCache)) } catch { /* storage full */ }
+    } catch { /* bucket may still be public — stored URLs keep working */ }
+  }
+  const out = new Map<string, string>()
+  for (const url of urls) {
+    const path = storagePath(url)
+    if (url && path && signedCache[path]) out.set(url, signedCache[path].u)
+  }
+  return out
+}
+
+async function signItemImages<T extends { image_url: string | null }>(rows: T[]): Promise<T[]> {
+  const map = await signUrls(rows.map(r => r.image_url))
+  return rows.map(r => {
+    const signed = r.image_url && map.get(r.image_url)
+    return signed ? { ...r, image_url: signed } : r
+  })
+}
+
 export async function fetchWardrobeItems(): Promise<DbWardrobeItem[]> {
   const { data, error } = await supabase
     .from('wardrobe_items')
@@ -147,7 +206,7 @@ export async function fetchWardrobeItems(): Promise<DbWardrobeItem[]> {
     .eq('status', 'active')
     .order('created_at', { ascending: false })
   if (error) throw error
-  return data ?? []
+  return signItemImages(data ?? [])
 }
 
 export async function fetchWardrobeItem(id: string): Promise<DbWardrobeItem | null> {
@@ -157,7 +216,7 @@ export async function fetchWardrobeItem(id: string): Promise<DbWardrobeItem | nu
     .eq('id', id)
     .single()
   if (error) throw error
-  return data
+  return data ? (await signItemImages([data]))[0] : data
 }
 
 export async function addWardrobeItem(
@@ -167,17 +226,7 @@ export async function addWardrobeItem(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
-  const ext = imageFile.name.split('.').pop() || 'webp'
-  const path = `${user.id}/items/${generateId()}.${ext}`
-
-  const { error: uploadError } = await supabase.storage
-    .from('wardrobe-images')
-    .upload(path, imageFile, { contentType: imageFile.type })
-  if (uploadError) throw uploadError
-
-  const { data: { publicUrl } } = supabase.storage
-    .from('wardrobe-images')
-    .getPublicUrl(path)
+  const publicUrl = await uploadImage(imageFile, 'items')
 
   const { data, error } = await supabase
     .from('wardrobe_items')
@@ -185,7 +234,7 @@ export async function addWardrobeItem(
     .select()
     .single()
   if (error) throw error
-  return data
+  return data ? (await signItemImages([data]))[0] : data
 }
 
 export async function addWardrobeItemFromOutfit(
@@ -214,7 +263,7 @@ export async function addWardrobeItemFromOutfit(
       fabric: null,
       size: null,
       price: null,
-      image_url: outfitImageUrl,
+      image_url: canonicalImageUrl(outfitImageUrl),
       thumbnail_url: null,
       ai_description: newItem.description || null,
     })
@@ -225,6 +274,7 @@ export async function addWardrobeItemFromOutfit(
 }
 
 export async function updateWardrobeItem(id: string, updates: Partial<DbWardrobeItem>): Promise<void> {
+  if (updates.image_url) updates = { ...updates, image_url: canonicalImageUrl(updates.image_url) }
   const { error } = await supabase
     .from('wardrobe_items')
     .update({ ...updates, updated_at: new Date().toISOString() })
@@ -386,7 +436,7 @@ export async function logOutfit(input: {
       occasion: input.occasion,
       social_circles: input.socialCircles ?? [],
       event_name: input.eventName ?? null,
-      image_url: input.imageUrl ?? null,
+      image_url: input.imageUrl ? canonicalImageUrl(input.imageUrl) : null,
       source: input.source ?? 'manual',
     })
     .select()
@@ -449,7 +499,17 @@ export async function fetchOutfitHistory(): Promise<OutfitWithItems[]> {
     .order('date', { ascending: false })
     .limit(30)
   if (error) throw error
-  return (data ?? []) as unknown as OutfitWithItems[]
+  const outfits = (data ?? []) as unknown as OutfitWithItems[]
+
+  // One signing round-trip covers outfit selfies + joined item photos
+  const map = await signUrls(outfits.flatMap(o => [o.image_url, ...o.outfit_items.map(oi => oi.wardrobe_items?.image_url)]))
+  return outfits.map(o => ({
+    ...o,
+    image_url: (o.image_url && map.get(o.image_url)) || o.image_url,
+    outfit_items: o.outfit_items.map(oi => oi.wardrobe_items?.image_url && map.has(oi.wardrobe_items.image_url)
+      ? { ...oi, wardrobe_items: { ...oi.wardrobe_items, image_url: map.get(oi.wardrobe_items.image_url)! } }
+      : oi),
+  }))
 }
 
 // ── Social Circles ──
@@ -531,7 +591,7 @@ export async function savePurchaseVerdict(input: {
       user_id: user.id,
       item_name: input.itemName,
       item_price: input.itemPrice ?? null,
-      item_image_url: input.itemImageUrl ?? null,
+      item_image_url: input.itemImageUrl ? canonicalImageUrl(input.itemImageUrl) : null,
       item_source_url: input.itemSourceUrl ?? null,
       verdict: input.verdict,
       reasoning: input.reasoning,
@@ -568,7 +628,12 @@ export async function fetchVerdictHistory(): Promise<DbPurchaseVerdict[]> {
     .order('created_at', { ascending: false })
     .limit(20)
   if (error) throw error
-  return data ?? []
+  const rows = data ?? []
+  const map = await signUrls(rows.map(r => r.item_image_url))
+  return rows.map(r => {
+    const signed = r.item_image_url && map.get(r.item_image_url)
+    return signed ? { ...r, item_image_url: signed } : r
+  })
 }
 
 // ── Profile ──
@@ -593,6 +658,10 @@ export async function updateProfile(updates: {
 
 export async function deleteAccount(): Promise<void> {
   await callEdgeFunction('delete-account', {})
+  // Leave nothing behind on-device either
+  for (const key of Object.keys(localStorage)) {
+    if (key.startsWith('sakhi_')) localStorage.removeItem(key)
+  }
   await supabase.auth.signOut()
 }
 
