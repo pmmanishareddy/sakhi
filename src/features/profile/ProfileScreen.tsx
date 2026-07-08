@@ -234,7 +234,7 @@ export function ProfileScreen() {
               )}
 
               {styleWords.size === 0 && Object.keys(occasionFreq).length === 0 && (
-                <p className="text-[12px] text-text-tertiary">No preferences yet — tap Edit to tell Sakhi your style.</p>
+                <p className="text-[12px] text-text-tertiary">No preferences yet. Tap Edit to tell Sakhi your style.</p>
               )}
             </div>
           )}

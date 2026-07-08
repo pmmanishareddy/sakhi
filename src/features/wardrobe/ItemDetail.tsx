@@ -57,11 +57,11 @@ export function ItemDetail() {
 
   const cpw = item.price && item.times_worn > 0
     ? `₹${Math.round(item.price / item.times_worn)}`
-    : item.price ? `₹${item.price}` : '—'
+    : item.price ? `₹${item.price}` : 'Not added'
 
   const lastWorn = item.last_worn_at
     ? new Date(item.last_worn_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    : '—'
+    : 'Not added'
 
   if (editing) {
     return (
@@ -160,10 +160,10 @@ export function ItemDetail() {
       {/* Extra details */}
       <div className="px-6 pt-4 pb-8">
         {[
-          { label: 'Brand', val: item.brand || '—' },
-          { label: 'Size', val: item.size || '—' },
-          { label: 'Fabric', val: item.fabric || '—' },
-          { label: 'Purchase Price', val: item.price ? `₹${item.price}` : '—' },
+          { label: 'Brand', val: item.brand || 'Not added' },
+          { label: 'Size', val: item.size || 'Not added' },
+          { label: 'Fabric', val: item.fabric || 'Not added' },
+          { label: 'Purchase Price', val: item.price ? `₹${item.price}` : 'Not added' },
           { label: 'Added', val: new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) },
         ].map((row, i) => (
           <div key={i} className="flex justify-between items-center py-3 border-b border-white/[0.04] last:border-b-0">

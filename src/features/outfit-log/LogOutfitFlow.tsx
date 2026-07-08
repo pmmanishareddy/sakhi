@@ -322,7 +322,7 @@ export function LogOutfitFlow() {
         {step === 0 && (
           <div className="px-7 animate-fade-up">
             <h1 className="text-[22px] font-bold tracking-tight mb-2">Log today's outfit</h1>
-            <p className="text-sm text-text-tertiary mb-6 leading-relaxed">Record what you wore — takes 10 seconds</p>
+            <p className="text-sm text-text-tertiary mb-6 leading-relaxed">Record what you wore in ten seconds</p>
 
             <div className="flex flex-col gap-3">
               <button
@@ -504,7 +504,7 @@ export function LogOutfitFlow() {
           <div className="animate-fade-up pb-8">
             <div className="px-7">
               <h1 className="text-[22px] font-bold tracking-tight mb-2">Add details</h1>
-              <p className="text-sm text-text-tertiary mb-5">Almost done — tag your outfit</p>
+              <p className="text-sm text-text-tertiary mb-5">Almost done, just tag your outfit</p>
             </div>
 
             {/* Selected items */}
@@ -606,7 +606,7 @@ export function LogOutfitFlow() {
                   <div key={rjId} className="flex items-center gap-3 p-3 bg-card rounded-[14px]">
                     <div className="flex-1 min-w-0">
                       <div className="text-[14px] font-semibold text-text-primary">{item.name}</div>
-                      <div className="text-[11px] text-amber-400">Wrong match — add as new</div>
+                      <div className="text-[11px] text-amber-400">Wrong match? Add as new</div>
                     </div>
                     {croppedIds.has(rjId) ? (
                       <span className="text-[12px] text-green-400 font-semibold flex items-center gap-1">

@@ -24,7 +24,7 @@ export function HomeScreen() {
         <div className="px-6 pt-6 text-[28px] font-light tracking-[10px] uppercase text-text-primary">Sakhi</div>
         <div className="flex items-center gap-1.5 px-6 pt-2">
           <Sun size={13} className="text-yellow-400" />
-          <span className="text-xs text-text-tertiary">34°C, Dubai — Light fabrics today</span>
+          <span className="text-xs text-text-tertiary">34°C in Dubai, light fabrics today</span>
         </div>
 
         {/* CTAs */}
@@ -114,7 +114,7 @@ function GettingStarted({ itemCount, outfitCount }: { itemCount: number; outfitC
       done: itemCount >= 5,
       icon: <Camera size={17} />,
       title: itemCount >= 5 ? 'Wardrobe started' : 'Add your first 5 pieces',
-      sub: itemCount >= 5 ? `${itemCount} pieces catalogued` : `${itemCount}/5 — snap them or batch-upload`,
+      sub: itemCount >= 5 ? `${itemCount} pieces catalogued` : `${itemCount}/5 added so far`,
       to: '/add-item',
     },
     {

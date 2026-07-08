@@ -12,7 +12,7 @@ const DEMO_OUTFITS: Record<string, { pieces: { emoji: string; name: string; tag:
       { emoji: '👡', name: 'Tan Strappy Sandals', tag: 'shoes', hue: 'from-amber-900/60 to-orange-950/60' },
       { emoji: '👜', name: 'Straw Tote', tag: 'bag', hue: 'from-yellow-900/50 to-amber-950/60' },
     ],
-    note: 'Linen breathes in the heat — keep jewellery minimal and let the olive do the talking.',
+    note: 'Linen breathes in the heat. Keep jewellery minimal and let the olive do the talking.',
   },
   Office: {
     pieces: [
@@ -20,7 +20,7 @@ const DEMO_OUTFITS: Record<string, { pieces: { emoji: string; name: string; tag:
       { emoji: '👖', name: 'Cream Trousers', tag: 'bottom', hue: 'from-stone-700/60 to-stone-900/60' },
       { emoji: '🥿', name: 'Nude Flats', tag: 'shoes', hue: 'from-rose-900/40 to-stone-950/60' },
     ],
-    note: 'Crisp neutrals read polished — roll the sleeves and tuck loosely for ease.',
+    note: 'Crisp neutrals always read polished. Roll the sleeves and tuck loosely for ease.',
   },
   Wedding: {
     pieces: [
@@ -28,7 +28,7 @@ const DEMO_OUTFITS: Record<string, { pieces: { emoji: string; name: string; tag:
       { emoji: '✨', name: 'Matching Blouse', tag: 'blouse', hue: 'from-pink-800/60 to-fuchsia-950/60' },
       { emoji: '💎', name: 'Gold Jhumkas', tag: 'jewellery', hue: 'from-yellow-800/50 to-amber-950/60' },
     ],
-    note: 'Classic nivi drape, pallu pinned — the jhumkas finish it. No western layers over silk.',
+    note: 'Classic nivi drape with the pallu pinned. The jhumkas finish it, silk like this needs nothing else.',
   },
 }
 
@@ -77,7 +77,7 @@ export function MeetSakhi({ onDone }: { onDone: () => void }) {
               Hi, I'm Sakhi
             </h1>
             <p className="text-[17px] text-text-secondary mt-4 leading-relaxed cascade-item" style={{ animationDelay: '700ms' }}>
-              Your wardrobe's memory — and your personal stylist.
+              Think of me as your closet's memory, and your personal stylist.
             </p>
             <p className="text-[15px] text-text-tertiary mt-3 leading-relaxed cascade-item" style={{ animationDelay: '1300ms' }}>
               I remember every piece you own, what you wear, and what's actually worth buying next.
@@ -87,7 +87,7 @@ export function MeetSakhi({ onDone }: { onDone: () => void }) {
               className="w-full mt-10 py-4 rounded-[14px] text-[15px] font-semibold bg-accent text-white border-none cursor-pointer active:scale-[0.97] transition-all cascade-item"
               style={{ animationDelay: '1900ms' }}
             >
-              Show me
+              Let's try it
             </button>
           </div>
         )}
@@ -96,7 +96,7 @@ export function MeetSakhi({ onDone }: { onDone: () => void }) {
         {scene === 1 && (
           <div className="animate-fade-up pb-10">
             <h1 className="text-[22px] font-bold tracking-tight mb-2">Where are you headed?</h1>
-            <p className="text-sm text-text-tertiary mb-6 leading-relaxed">Tap one — watch me build a look from a sample closet.</p>
+            <p className="text-sm text-text-tertiary mb-6 leading-relaxed">Pick one and I'll build a look from a sample closet.</p>
 
             <div className="flex gap-2 mb-7">
               {Object.keys(DEMO_OUTFITS).map(o => (
@@ -142,7 +142,7 @@ export function MeetSakhi({ onDone }: { onDone: () => void }) {
 
                 {noteVisible && (
                   <p className="cascade-item text-[13px] text-text-tertiary mt-4 leading-relaxed" style={{ animationDelay: '250ms' }}>
-                    With your real closet, every piece is yours — and I never mix ethnic and western the wrong way.
+                    This is a sample closet. In the app, every piece is your own.
                   </p>
                 )}
               </div>
@@ -164,7 +164,7 @@ export function MeetSakhi({ onDone }: { onDone: () => void }) {
         {scene === 2 && (
           <div className="animate-fade-up pb-10">
             <h1 className="text-[22px] font-bold tracking-tight mb-2">Tempted in a store?</h1>
-            <p className="text-sm text-text-tertiary mb-6 leading-relaxed">Ask me before you buy — I check it against what you already own.</p>
+            <p className="text-sm text-text-tertiary mb-6 leading-relaxed">Ask me before you buy. I'll check it against what you already own.</p>
 
             <div className="p-4 rounded-[16px] bg-card border border-border flex items-center gap-4">
               <div className="w-14 h-14 rounded-[12px] bg-gradient-to-br from-zinc-700/70 to-zinc-950 flex items-center justify-center text-2xl shrink-0">🖤</div>
@@ -195,7 +195,7 @@ export function MeetSakhi({ onDone }: { onDone: () => void }) {
                 <div className="cascade-item mt-4 p-4 rounded-[16px] bg-red-500/[0.08] border border-red-500/20">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-red-400 mb-1.5">Skip this one</div>
                   <p className="text-sm text-text-secondary leading-relaxed">
-                    You already own two black dresses doing the same job — and one hasn't left the closet in months. That's ₹3,500 back in your pocket.
+                    You already own two black dresses doing the same job, and one hasn't left the closet in months. That's ₹3,500 staying in your pocket.
                   </p>
                 </div>
 
@@ -204,9 +204,9 @@ export function MeetSakhi({ onDone }: { onDone: () => void }) {
                   <p className="text-[13px] text-text-tertiary mb-4 leading-relaxed">Three habits, ten seconds each:</p>
                   <div className="flex flex-col gap-2.5">
                     {[
-                      { icon: <Camera size={17} />, title: 'Snap your clothes', sub: 'I identify and catalogue each piece' },
-                      { icon: <PenLine size={17} />, title: 'Log what you wear', sub: 'I learn your real taste, not just intentions' },
-                      { icon: <Wand2 size={17} />, title: 'Ask before you buy', sub: 'I keep your money honest' },
+                      { icon: <Camera size={17} />, title: 'Snap your clothes', sub: 'One photo per piece, I fill in the details' },
+                      { icon: <PenLine size={17} />, title: 'Log what you wear', sub: 'This is how I learn what you actually love' },
+                      { icon: <Wand2 size={17} />, title: 'Ask before you buy', sub: 'I\'ll tell you honestly if it\'s worth it' },
                     ].map((s, i) => (
                       <div key={s.title} className="cascade-item flex items-center gap-3.5 p-3 rounded-[14px] bg-card" style={{ animationDelay: `${500 + i * 160}ms` }}>
                         <div className="w-9 h-9 rounded-[10px] bg-accent-soft text-accent flex items-center justify-center shrink-0">{s.icon}</div>

@@ -13,14 +13,14 @@ const SECTIONS: { title: string; body: string[] }[] = [
   {
     title: 'Where it lives',
     body: [
-      'Everything is stored in Sakhi\'s database and private image storage (hosted on Supabase). Your photos are accessible only through short-lived, signed links tied to your login — they are not public.',
+      'Everything is stored in Sakhi\'s database and private image storage (hosted on Supabase). Your photos are accessible only through short-lived, signed links tied to your login. They are not public.',
       'Your data is yours alone: no other Sakhi user can see your wardrobe, photos, or preferences.',
     ],
   },
   {
     title: 'How AI is involved',
     body: [
-      'Outfit suggestions, item recognition, purchase verdicts, and gap analysis are powered by Claude (Anthropic). To generate a response, your wardrobe list, relevant preferences, and — for photo features — the photo you submit are sent to Anthropic\'s API.',
+      'Outfit suggestions, item recognition, purchase verdicts, and gap analysis are powered by Claude (Anthropic). To generate a response, your wardrobe list and relevant preferences are sent to Anthropic\'s API, along with your photo when you use a photo feature.',
       'Anthropic does not use this data to train its models, and retains API inputs only briefly for abuse prevention.',
       'Sakhi\'s advice is styling opinion, not financial guidance. You know your closet and your budget best.',
     ],

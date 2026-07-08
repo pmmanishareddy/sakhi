@@ -158,7 +158,7 @@ export function Onboarding({ onComplete }: { onComplete?: () => void }) {
         {step === 0 && (
           <div className="animate-fade-up">
             <h1 className="text-[22px] font-bold tracking-tight mb-3">What should we call you?</h1>
-            <p className="text-sm text-text-tertiary mb-8 leading-relaxed">Just a first name — Sakhi keeps it personal.</p>
+            <p className="text-sm text-text-tertiary mb-8 leading-relaxed">Just a first name. Sakhi keeps it personal.</p>
             <input
               className="w-full bg-card border border-border rounded-[14px] px-[18px] py-4 text-base text-text-primary outline-none focus:border-accent transition-colors"
               placeholder="Your name"
@@ -251,7 +251,7 @@ export function Onboarding({ onComplete }: { onComplete?: () => void }) {
         {step === 3 && (
           <div className="animate-fade-up">
             <h1 className="text-[22px] font-bold tracking-tight mb-3">What fills your week?</h1>
-            <p className="text-sm text-text-tertiary mb-5 leading-relaxed">Tap how often — skip what doesn't apply.</p>
+            <p className="text-sm text-text-tertiary mb-5 leading-relaxed">Tap how often, skip what doesn't apply.</p>
 
             <div className="flex flex-col gap-3">
               {OCCASIONS.map(occ => {
@@ -360,7 +360,7 @@ export function Onboarding({ onComplete }: { onComplete?: () => void }) {
                       : 'border-transparent bg-card text-text-secondary'
                   }`}
                 >
-                  Nothing — I'll wear anything
+                  Nothing, I'll wear anything
                 </button>
               </div>
 
@@ -394,7 +394,7 @@ export function Onboarding({ onComplete }: { onComplete?: () => void }) {
                 <span className="text-text-secondary font-medium">
                   {Array.from(selectedStyleWords).join(', ').toLowerCase()}
                 </span>
-                {location ? <>{' '}— based in <span className="text-text-secondary font-medium">{location}</span></> : ''}
+                {location ? <>, based in <span className="text-text-secondary font-medium">{location}</span></> : ''}
                 .{' '}{getMindsetSummary()}
               </p>
             )}

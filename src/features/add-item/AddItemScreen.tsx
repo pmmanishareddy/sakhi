@@ -292,7 +292,7 @@ export function AddItemScreen() {
         {step === 0 && (
           <div className="px-7 animate-fade-up">
             <h1 className="text-[22px] font-bold tracking-tight mb-2">Add to wardrobe</h1>
-            <p className="text-sm text-text-tertiary mb-8 leading-relaxed">Snap it or pick from your gallery — Sakhi handles the rest.</p>
+            <p className="text-sm text-text-tertiary mb-8 leading-relaxed">Snap it or pick from your gallery. Sakhi handles the rest.</p>
 
             <div className="flex flex-col gap-3">
               <button

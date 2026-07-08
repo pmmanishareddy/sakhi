@@ -130,7 +130,7 @@ export function LoginScreen() {
       </button>
 
       <p className="text-[11px] text-text-tertiary mt-4 leading-relaxed text-center">
-        By continuing you agree to how Sakhi handles your data — photos and wardrobe stay private to you,
+        By continuing you agree to how Sakhi handles your data. Photos and wardrobe stay private to you,
         and AI features are powered by Anthropic's Claude.{' '}
         <span className="text-accent cursor-pointer underline" onClick={() => navigate('/privacy')}>
           Privacy

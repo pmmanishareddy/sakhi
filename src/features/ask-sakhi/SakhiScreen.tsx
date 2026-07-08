@@ -152,7 +152,7 @@ export function SakhiScreen() {
 
   const handleSkipAdd = () => {
     setShowAddPrompt(false)
-    setToast('Noted — enjoy your new piece!')
+    setToast('Noted. Enjoy your new piece!')
     setTimeout(() => {
       resetInput()
       setView('main')
@@ -370,7 +370,7 @@ export function SakhiScreen() {
                     <span className={`text-lg font-bold ${cfg.text}`}>{cfg.label}</span>
                   </div>
                   <p className="text-[14px] text-text-secondary leading-relaxed">{verdictResult.reason}</p>
-                  <p className="text-[11px] text-text-tertiary mt-2.5">Sakhi's take — you know your closet best.</p>
+                  <p className="text-[11px] text-text-tertiary mt-2.5">Sakhi's take. You know your closet best.</p>
                 </div>
               )
             })()}

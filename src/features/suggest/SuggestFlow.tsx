@@ -120,7 +120,7 @@ export function SuggestFlow() {
             <p className="text-sm text-text-tertiary mb-3 leading-relaxed">Pick one and Sakhi will do the rest</p>
             <div className="flex items-center gap-1.5 mb-6">
               <Sun size={13} className="text-yellow-400" />
-              <span className="text-xs text-text-tertiary">34°C, Dubai — Light fabrics today</span>
+              <span className="text-xs text-text-tertiary">34°C in Dubai, light fabrics today</span>
             </div>
 
             <div className="grid grid-cols-2 gap-2.5 mb-6">
@@ -164,7 +164,7 @@ export function SuggestFlow() {
                 </div>
                 <div>
                   <div className="text-[15px] font-semibold text-accent">Let Sakhi decide</div>
-                  <div className="text-xs text-text-tertiary mt-1 leading-relaxed">Sakhi picks a complete outfit from your wardrobe — head to toe</div>
+                  <div className="text-xs text-text-tertiary mt-1 leading-relaxed">Sakhi picks a complete outfit from your wardrobe, head to toe</div>
                 </div>
               </button>
 
@@ -189,7 +189,7 @@ export function SuggestFlow() {
           <div className="animate-fade-up">
             <div className="px-7">
               <h1 className="text-[22px] font-bold tracking-tight mb-2">Pick items to style</h1>
-              <p className="text-sm text-text-tertiary mb-4 leading-relaxed">Select what you want to wear — Sakhi builds around it</p>
+              <p className="text-sm text-text-tertiary mb-4 leading-relaxed">Select what you want to wear and Sakhi builds around it</p>
             </div>
 
             <div className="flex items-center justify-between px-7 py-3 bg-card mb-3">
