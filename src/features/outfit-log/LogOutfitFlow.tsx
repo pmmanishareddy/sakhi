@@ -140,6 +140,8 @@ export function LogOutfitFlow() {
   const [eventName, setEventName] = useState('')
   const [toast, setToast] = useState('')
   const [matchedResults, setMatchedResults] = useState<MatchResult | null>(null)
+  const [addedIds, setAddedIds] = useState<Set<string>>(new Set())
+  const [showAddPicker, setShowAddPicker] = useState(false)
   const [dbCircles, setDbCircles] = useState<DbSocialCircle[]>([])
   const [removedItems, setRemovedItems] = useState<Set<string>>(new Set())
   const [rejectedMatches] = useState<Array<{ name: string; category: string; description?: string }>>([])
@@ -161,6 +163,7 @@ export function LogOutfitFlow() {
   ]
 
   const getMatchedDisplay = () => {
+    let base = demoMatched
     if (matchedResults) {
       const matched = matchedResults.matched_items.map(m => ({
         ...m,
@@ -174,9 +177,38 @@ export function LogOutfitFlow() {
         confidence: 'high' as const,
         isNew: true,
       }))
-      return [...matched, ...newItems]
+      base = [...matched, ...newItems]
     }
-    return demoMatched
+    // Pieces the user added by hand when the AI missed them
+    const baseIds = new Set(base.map(b => b.id))
+    const added = items
+      .filter(i => addedIds.has(i.id) && !baseIds.has(i.id))
+      .map(i => ({ id: i.id, name: i.name, image_url: i.image_url || '', confidence: 'high' as const, isNew: false }))
+    return [...base, ...added]
+  }
+
+  // Is this wardrobe item currently part of the outfit being logged?
+  const inOutfit = (id: string) => {
+    const matchedIds = new Set((matchedResults?.matched_items || []).map(m => m.id))
+    return (matchedIds.has(id) && !removedItems.has(id)) || addedIds.has(id)
+  }
+
+  const togglePickerItem = (id: string) => {
+    const matchedIds = new Set((matchedResults?.matched_items || []).map(m => m.id))
+    if (matchedIds.has(id)) {
+      // AI-matched piece — membership is tracked via removedItems
+      setRemovedItems(s => {
+        const next = new Set(s)
+        next.has(id) ? next.delete(id) : next.add(id)
+        return next
+      })
+    } else {
+      setAddedIds(s => {
+        const next = new Set(s)
+        next.has(id) ? next.delete(id) : next.add(id)
+        return next
+      })
+    }
   }
 
   const handleSelfie = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,6 +239,12 @@ export function LogOutfitFlow() {
     next.has(id) ? next.delete(id) : next.add(id)
     setSelectedItems(next)
   }
+
+  useEffect(() => {
+    // Fresh photo → fresh manual adjustments
+    setAddedIds(new Set())
+    setShowAddPicker(false)
+  }, [selfieFile])
 
   const toggleSocial = (s: string) => {
     const next = new Set(socialCircles)
@@ -372,7 +410,11 @@ export function LogOutfitFlow() {
                     )}
                     <button
                       onClick={() => {
-                        setRemovedItems(s => new Set(s).add(m.id))
+                        if (addedIds.has(m.id)) {
+                          setAddedIds(s => { const next = new Set(s); next.delete(m.id); return next })
+                        } else {
+                          setRemovedItems(s => new Set(s).add(m.id))
+                        }
                       }}
                       className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-card border border-white/10 flex items-center justify-center cursor-pointer"
                     >
@@ -382,12 +424,12 @@ export function LogOutfitFlow() {
                   <span className="text-[10px] text-text-tertiary mt-1.5 w-[60px] text-center truncate">{m.name}</span>
                 </div>
               ))}
-              <div className="flex flex-col items-center shrink-0">
+              <button onClick={() => setShowAddPicker(true)} className="flex flex-col items-center shrink-0 bg-transparent border-none cursor-pointer p-0">
                 <div className="w-[60px] h-[60px] rounded-xl bg-card flex items-center justify-center border border-dashed border-white/10">
                   <Plus size={20} className="text-text-tertiary" />
                 </div>
                 <span className="text-[10px] text-text-tertiary mt-1.5">Add item</span>
-              </div>
+              </button>
             </div>
 
             {/* Context fields */}
@@ -650,6 +692,49 @@ export function LogOutfitFlow() {
           }}
           onCancel={() => setStep(6)}
         />
+      )}
+
+      {/* Add-from-wardrobe picker — for pieces the AI missed or matched wrong */}
+      {showAddPicker && (
+        <div className="fixed inset-0 z-50 bg-bg flex flex-col">
+          <div className="flex items-center justify-between px-6 pt-5 pb-3 shrink-0">
+            <div>
+              <h2 className="text-[18px] font-bold tracking-tight">Add from wardrobe</h2>
+              <p className="text-[12px] text-text-tertiary mt-0.5">Tap anything Sakhi missed</p>
+            </div>
+            <button
+              onClick={() => setShowAddPicker(false)}
+              className="px-4 py-2 rounded-xl text-[13px] font-semibold bg-accent text-white border-none cursor-pointer"
+            >
+              Done
+            </button>
+          </div>
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <div className="grid grid-cols-3 gap-2.5 px-5 pb-10">
+              {items.map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => togglePickerItem(item.id)}
+                  className="relative aspect-[3/4] rounded-xl overflow-hidden cursor-pointer bg-card border-none active:scale-[0.96] transition-transform"
+                >
+                  {item.image_url ? (
+                    <img src={item.image_url} alt={item.name} className="absolute inset-0 w-full h-full object-cover" />
+                  ) : (
+                    <span className="absolute inset-0 flex items-center justify-center px-1 text-[10px] text-text-tertiary text-center">{item.name}</span>
+                  )}
+                  {inOutfit(item.id) && (
+                    <>
+                      <div className="absolute inset-0 bg-accent/30" />
+                      <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
+                        <Check size={12} className="text-white" />
+                      </div>
+                    </>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
 
       {saving && (
