@@ -370,6 +370,7 @@ export function SakhiScreen() {
                     <span className={`text-lg font-bold ${cfg.text}`}>{cfg.label}</span>
                   </div>
                   <p className="text-[14px] text-text-secondary leading-relaxed">{verdictResult.reason}</p>
+                  <p className="text-[11px] text-text-tertiary mt-2.5">Sakhi's take — you know your closet best.</p>
                 </div>
               )
             })()}

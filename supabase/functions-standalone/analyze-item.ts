@@ -1,9 +1,18 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+const ALLOWED_ORIGINS = new Set([
+  'https://sakhi-550.netlify.app',
+  'http://localhost:5173',
+  'http://localhost:4173',
+])
+
+function makeCorsHeaders(origin: string | null) {
+  return {
+    'Access-Control-Allow-Origin': origin && ALLOWED_ORIGINS.has(origin) ? origin : 'https://sakhi-550.netlify.app',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Vary': 'Origin',
+  }
 }
 
 async function getUser(authHeader: string) {
@@ -40,6 +49,7 @@ const SYSTEM_PROMPT = `Analyze the clothing item in this image.
 
 If the image does NOT clearly show a clothing item, footwear, bag, or fashion accessory, return exactly {"error": "not_clothing"} — never invent a garment.
 If multiple garments are visible, analyze the single most prominent one.
+Describe only the garments — never the person wearing them, their body, or their appearance.
 
 Return ONLY a JSON object:
 {
@@ -68,6 +78,7 @@ Ethnic garments (saree, saree blouse, kurta, kurti, lehenga, anarkali, salwar, d
 No markdown, no explanation.`
 
 serve(async (req) => {
+  const corsHeaders = makeCorsHeaders(req.headers.get('origin'))
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
@@ -75,6 +86,12 @@ serve(async (req) => {
     await getUser(authHeader)
 
     const { image_base64, image_content_type } = await req.json()
+    if (typeof image_base64 !== 'string' || !image_base64 || image_base64.length > 7_000_000) {
+      return new Response(JSON.stringify({ success: false, error: 'That photo is too large. Try a smaller one.' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
     const text = await callClaude({
       model: 'claude-haiku-4-5',

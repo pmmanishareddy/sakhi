@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { corsHeaders } from '../_shared/cors.ts'
+import { makeCorsHeaders } from '../_shared/cors.ts'
 import { getUser } from '../_shared/auth.ts'
 import { callClaude, parseJsonResponse } from '../_shared/claude.ts'
 
@@ -7,6 +7,7 @@ const SYSTEM_PROMPT = `You are Sakhi, a wardrobe AI. Given an outfit photo and t
 
 DETECT: tops, bottoms, dresses, jumpsuits, outerwear, sarees, kurtas, dupattas, footwear, bags, and jewelry.
 IGNORE: belts, sunglasses, watches, scarves, hats, and other small accessories.
+Describe only the garments — never the person wearing them, their body, or their appearance.
 
 You receive the wardrobe as a pipe-delimited list: id|name|category|color|pattern|fabric
 
@@ -41,6 +42,7 @@ Return JSON:
 No markdown, no explanation.`
 
 serve(async (req) => {
+  const corsHeaders = makeCorsHeaders(req.headers.get('origin'))
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -50,6 +52,12 @@ serve(async (req) => {
     const { user, supabase } = await getUser(authHeader)
 
     const { image_base64, image_content_type } = await req.json()
+    if (typeof image_base64 !== 'string' || !image_base64 || image_base64.length > 7_000_000) {
+      return new Response(JSON.stringify({ success: false, error: 'That photo is too large. Try a smaller one.' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
     const { data: items } = await supabase
       .from('wardrobe_items')

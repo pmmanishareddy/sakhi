@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { corsHeaders } from '../_shared/cors.ts'
+import { makeCorsHeaders } from '../_shared/cors.ts'
 import { getUser } from '../_shared/auth.ts'
 import { callClaude, parseJsonResponse } from '../_shared/claude.ts'
 
@@ -7,6 +7,7 @@ const SYSTEM_PROMPT = `Analyze the clothing item in this image.
 
 If the image does NOT clearly show a clothing item, footwear, bag, or fashion accessory, return exactly {"error": "not_clothing"} — never invent a garment.
 If multiple garments are visible, analyze the single most prominent one.
+Describe only the garments — never the person wearing them, their body, or their appearance.
 
 Return ONLY a JSON object:
 {
@@ -35,6 +36,7 @@ Ethnic garments (saree, saree blouse, kurta, kurti, lehenga, anarkali, salwar, d
 No markdown, no explanation.`
 
 serve(async (req) => {
+  const corsHeaders = makeCorsHeaders(req.headers.get('origin'))
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -44,6 +46,12 @@ serve(async (req) => {
     await getUser(authHeader)
 
     const { image_base64, image_content_type } = await req.json()
+    if (typeof image_base64 !== 'string' || !image_base64 || image_base64.length > 7_000_000) {
+      return new Response(JSON.stringify({ success: false, error: 'That photo is too large. Try a smaller one.' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
     const text = await callClaude({
       system: SYSTEM_PROMPT,

@@ -12,6 +12,7 @@
 - [x] Fix Ask Sakhi issues
 - [x] Improve outfit suggestions — fixed ethnic/western mixing (explicit W/E/V style column, saree-blouse pre-filter, deterministic post-validation with retry). suggest-outfit also hardened against reasoning-preamble truncation (no prefill — model rejects it; 1500 max_tokens; reformat retry) and hallucinated item ids (violation retry + final strip).
   - [ ] Re-check any existing items where a saree blouse was tagged as plain "Blouse" (edit category to "Saree Blouse" in item detail)
+- [ ] Per-user AI rate limit — small counter table checked in each edge function; needed once there are real users so one person can't exhaust the Anthropic spend cap ($10/mo, set 2026-07-09) for everyone
 - [ ] Swap individual items in suggested outfit — tap a specific piece (e.g. the top) to swap just that item while keeping the rest of the outfit intact
 - [ ] Edit logged outfits — add/remove items from an outfit, update the occasion, from the outfit detail screen
 - [ ] Add streaming to AI features — use Claude's SSE streaming + edge function proxy so partial results arrive faster. Best suited for suggest-outfit (show styling_note progressively) or a future chat-style Sakhi interaction. For JSON responses, consider splitting into a plain-text first line (verdict/title) + JSON body so the headline can render immediately while the rest streams in.

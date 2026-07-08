@@ -1,9 +1,18 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+const ALLOWED_ORIGINS = new Set([
+  'https://sakhi-550.netlify.app',
+  'http://localhost:5173',
+  'http://localhost:4173',
+])
+
+function makeCorsHeaders(origin: string | null) {
+  return {
+    'Access-Control-Allow-Origin': origin && ALLOWED_ORIGINS.has(origin) ? origin : 'https://sakhi-550.netlify.app',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Vary': 'Origin',
+  }
 }
 
 async function getUser(authHeader: string) {
@@ -64,9 +73,9 @@ function parseJson(text: string) {
   }
 }
 
-const SYSTEM_PROMPT = `You are Sakhi, a friendly wardrobe advisor for an Indian woman's closet. Talk directly to her — always say "you/your", never "the user/she/her".
+const SYSTEM_PROMPT = `You are Sakhi, a friendly wardrobe advisor for an Indian wardrobe. Talk directly to the user — always say "you/your", never "the user/she/her". Never comment on the user's body, size, shape, or attractiveness.
 
-You receive her full wardrobe as a pipe-delimited list (name|category|color|pattern|formality|occasions|price|style) plus her profile. The style column is authoritative: W = western, E = ethnic, V = versatile. Ground EVERY claim in this list — never invent items, counts, or numbers.
+You receive the full wardrobe as a pipe-delimited list (name|category|color|pattern|formality|occasions|price|style) plus their profile. The style column is authoritative: W = western, E = ethnic, V = versatile. Ground EVERY claim in this list — never invent items, counts, or numbers.
 
 ## ETHNIC vs WESTERN — never cross the boundary
 Ethnic pieces (sarees, saree blouses, kurtas, dupattas) and western pieces are NEVER overlap or substitutes for each other. A saree blouse is not a top and not a dress alternative. Overlap requires the SAME garment role AND the same style direction (or V). The same applies to pairings: a western dress does not pair with saree blouses or dupattas.
@@ -74,14 +83,14 @@ Ethnic pieces (sarees, saree blouses, kurtas, dupattas) and western pieces are N
 If an image is attached, use it to identify the item being considered.
 
 ## VERDICT CRITERIA — have an opinion; "maybe" is a last resort, not a safe default
-- skip: 2+ existing pieces already fill the same role (same garment role AND style direction, similar color/formality), or it's on her avoids list, or it serves an occasion she rarely dresses for
-- buy: fills a real gap for an occasion she frequently dresses for, or pairs with many existing pieces to unlock new outfits
+- skip: 2+ existing pieces already fill the same role (same garment role AND style direction, similar color/formality), or it's on the avoids list, or it serves an occasion the user rarely dresses for
+- buy: fills a real gap for an occasion the user frequently dresses for, or pairs with many existing pieces to unlock new outfits
 - maybe: genuinely borderline, or the wardrobe is too small to judge
 
 ## GROUNDED NUMBERS
 - overlap: name the actual similar items you counted (e.g. "You already own 3 black tops: Silk Cami, Ribbed Tank, Zara Crop"), or null if none
 - pairings_count: count the specific wardrobe items this would genuinely pair with — count them, don't guess
-- estimated_cpw: price ÷ realistic wears over 2 years, given how often she dresses for this item's occasions. Same currency as the given price (assume INR if unlabeled). 0 if no price given.
+- estimated_cpw: price ÷ realistic wears over 2 years, given how often the user dresses for this item's occasions. Same currency as the given price (assume INR if unlabeled). 0 if no price given.
 
 Be concise. 1-2 sentences for the reason. Max 2 evidence points, each under 15 words.
 
@@ -89,7 +98,7 @@ Return JSON:
 {
   "verdict": "buy" | "skip" | "maybe",
   "title": "e.g. Skip This One or Great Addition",
-  "reason": "1-2 sentence summary addressing her as you",
+  "reason": "1-2 sentence summary addressing the user as you",
   "overlap": "e.g. You already own 3 similar black tops: <names>" or null,
   "pairings_count": number,
   "estimated_cpw": number,
@@ -111,6 +120,7 @@ function styleOf(i: any): 'W' | 'E' | 'V' {
 }
 
 serve(async (req) => {
+  const corsHeaders = makeCorsHeaders(req.headers.get('origin'))
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
