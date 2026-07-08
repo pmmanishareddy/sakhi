@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Camera, Sparkles, Wand2 } from 'lucide-react'
 import { useAuth } from '../../lib/auth'
 import { updateProfile } from '../../lib/api'
+import { MeetSakhi } from './MeetSakhi'
 
 export const CITIES = [
   { name: 'Mumbai', currency: 'INR' },
@@ -50,6 +51,7 @@ export function Onboarding({ onComplete }: { onComplete?: () => void }) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [step, setStep] = useState(0)
+  const [showIntro, setShowIntro] = useState(() => !localStorage.getItem('sakhi_intro_seen'))
 
   const [name, setName] = useState('')
   const [location, setLocation] = useState('')
@@ -131,6 +133,10 @@ export function Onboarding({ onComplete }: { onComplete?: () => void }) {
   }
 
   const btnClass = "w-full mt-7 py-4 rounded-[14px] text-[15px] font-semibold bg-accent text-white border-none cursor-pointer transition-all active:scale-[0.97] disabled:opacity-35 disabled:pointer-events-none"
+
+  if (showIntro) {
+    return <MeetSakhi onDone={() => { localStorage.setItem('sakhi_intro_seen', 'true'); setShowIntro(false) }} />
+  }
 
   return (
     <div className="flex flex-col h-full min-h-0 bg-bg overflow-y-auto">

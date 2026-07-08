@@ -54,6 +54,7 @@ export function SuggestFlow() {
       if (user) {
         const result = await suggestOutfit(occasion, pinnedIds, excludeIds)
         stepTimers.forEach(clearTimeout)
+        localStorage.setItem('sakhi_first_suggestion', 'true')
         setSuggestion(result)
         const matchedItems = result.items
           .map(ri => items.find(i => i.id === ri.id))

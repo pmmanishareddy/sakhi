@@ -14,7 +14,15 @@ import { SuggestFlow } from './features/suggest/SuggestFlow'
 import { LogOutfitFlow } from './features/outfit-log/LogOutfitFlow'
 import { OutfitDetail } from './features/outfit-log/OutfitDetail'
 import { ProfileScreen } from './features/profile/ProfileScreen'
+import { MeetSakhi } from './features/onboarding/MeetSakhi'
+import { useNavigate } from 'react-router-dom'
 import { getProfile } from './lib/api'
+
+// Replayable from Profile → "How Sakhi works"
+function MeetSakhiReplay() {
+  const navigate = useNavigate()
+  return <MeetSakhi onDone={() => navigate(-1)} />
+}
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -76,6 +84,7 @@ function AppRoutes() {
       <Route path="/log-outfit" element={<LogOutfitFlow />} />
       <Route path="/outfit/:id" element={<OutfitDetail />} />
       <Route path="/profile" element={<ProfileScreen />} />
+      <Route path="/welcome" element={<MeetSakhiReplay />} />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   )
