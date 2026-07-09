@@ -48,6 +48,23 @@ Measured numbers above are the pre-fix baseline. What changed:
 
 Still open (Tier 2/3, see PLAN.md backlog): precompute "Today's look" daily suggestion, precompute gaps on wardrobe change (also the brand-collab foundation), SSE streaming for on-demand calls. After those, the only cold waits left are first-run gaps and a cold suggest.
 
+## Gap feature after the audit fixes (final numbers, 2026-07-09 evening)
+
+An agent audit measured the deck-schema versions and drove a fix round. Final verified state:
+
+| | Before audit | After fixes |
+|---|---|---|
+| wardrobe-gaps | 24.8s avg, 5 cards | **16.1 to 17.8s, exactly 4 cards** (output diet), ~$0.012/call |
+| shop-gap reliability | 1 clean success in 3 runs (citation-crashed parser + timid rules) | **3/3 success, 5 options each** |
+| shop-gap latency | 19 to 51s (retry tails) | **18.6 to 19.9s** (rounds capped at 3, nudges rare) |
+| shop-gap repeats | full re-search every tap | **instant** (on-device cache per gap, 7-day expiry, "Found X ago" + Search again) |
+
+Key audit lessons recorded: the gaps prompt is below Sonnet's 2,048-token minimum cacheable
+prefix so Anthropic prompt caching is a no-op here; category/collection pages are the honest
+ceiling for web-search shopping results (exact product deep links arrive with the brand
+catalog); and the precompute layer must debounce batched item-adds or it costs more than
+on-demand.
+
 ## shop-gap (added later on 2026-07-09)
 
 New function behind the gaps deck's "Show me options" button: Claude + web search
