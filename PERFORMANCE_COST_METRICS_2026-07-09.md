@@ -48,6 +48,16 @@ Measured numbers above are the pre-fix baseline. What changed:
 
 Still open (Tier 2/3, see PLAN.md backlog): precompute "Today's look" daily suggestion, precompute gaps on wardrobe change (also the brand-collab foundation), SSE streaming for on-demand calls. After those, the only cold waits left are first-run gaps and a cold suggest.
 
+## shop-gap (added later on 2026-07-09)
+
+New function behind the gaps deck's "Show me options" button: Claude + web search
+finds real purchasable products for a buy-gap. Measured ~25s per lookup (search turns
+plus pause_turn continuations), ~$0.03 to $0.05 per call (up to 3 searches at $10/1k
+plus Sonnet tokens). Runs only on an explicit user tap, behind a loading sheet.
+Results verified country-aware: Dubai profile got AED prices from ounass.ae.
+Known v1 limit: links are retailer category pages, not exact product pages; exact
+deep links arrive with the brand-catalog (sponsored) layer.
+
 ## Findings
 
 - **Wardrobe-gaps is output-bound**: ~825 output tokens at Sonnet generation speed *is*
