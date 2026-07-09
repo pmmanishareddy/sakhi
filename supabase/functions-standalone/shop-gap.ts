@@ -114,7 +114,7 @@ serve(async (req) => {
     // without the JSON (nudge once). Loop until we have an array to parse.
     let messages: any[] = [{ role: 'user', content: userMessage }]
     let text = ''
-    for (let attempt = 0; attempt < 4; attempt++) {
+    for (let attempt = 0; attempt < 2; attempt++) {
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
