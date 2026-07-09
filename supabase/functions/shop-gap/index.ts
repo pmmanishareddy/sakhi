@@ -15,11 +15,25 @@ function stripEmDashes(v: any): any {
 
 function parseJson(text: string) {
   if (!text) throw new Error('Empty response from Claude')
-  let cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-  const start = cleaned.search(/[{[]/)
-  const end = Math.max(cleaned.lastIndexOf('}'), cleaned.lastIndexOf(']'))
-  if (start >= 0 && end > start) cleaned = cleaned.slice(start, end + 1)
-  return JSON.parse(cleaned)
+  const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+  // Web-search responses wrap the array in prose. Walk brackets to pull out
+  // the first complete JSON array, string-aware.
+  const s = cleaned.indexOf('[')
+  if (s < 0) throw new Error('No JSON array in response')
+  let depth = 0, inStr = false, esc = false
+  for (let i = s; i < cleaned.length; i++) {
+    const ch = cleaned[i]
+    if (esc) { esc = false; continue }
+    if (ch === '\\') { esc = true; continue }
+    if (ch === '"') inStr = !inStr
+    if (inStr) continue
+    if (ch === '[') depth++
+    else if (ch === ']') {
+      depth--
+      if (depth === 0) return JSON.parse(cleaned.slice(s, i + 1))
+    }
+  }
+  throw new Error('Unterminated JSON array in response')
 }
 
 const SYSTEM_PROMPT = `You are Sakhi's shopping scout. You are given a wardrobe gap (a garment role, preferred colors, occasions, and a price band) plus the user's city and currency. Use web search to find real products that are purchasable right now.
