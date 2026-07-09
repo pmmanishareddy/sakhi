@@ -46,11 +46,13 @@ const SYSTEM_PROMPT = `You are Sakhi's shopping scout. You are given a wardrobe 
 Rules:
 - Find 3-5 options from reputable retailers that ship to the user's country. For India prefer Myntra, Ajio, Amazon.in, Nykaa Fashion, Tata CLiQ. For UAE prefer Namshi, Ounass, Amazon.ae, Noon, Level Shoes.
 - Stay inside or near the price band. Match the requested colors and role closely.
+- Exact product pages are best. When you cannot pin down an exact product, a retailer's relevant filtered category or collection page is a perfectly good option: use its real URL and make the title describe what the user will find there (e.g. "Gold and cream saree blouses at Ounass").
+- If you did not see a price, leave "price" as an empty string. Never write text like "visit site" in the price field.
+- Always return the best 3-5 options your searches surfaced. Only URLs you actually saw in results; never invent URLs.
 - note: one short sentence on why this one fits the gap. Human voice. Never use em dashes.
-- Only include products you actually found via search, with their real URLs. Never invent a product or URL.
 
 No markdown links or bracketed citations anywhere in your reply. After searching, return ONLY this JSON array, no other text:
-[{ "title": "product name", "brand": "brand", "price": "1,999", "currency": "INR", "url": "https://...", "source": "myntra.com", "note": "why it fits" }]`
+[{ "title": "product or page name", "brand": "brand or retailer", "price": "1,999", "currency": "INR", "url": "https://...", "source": "myntra.com", "note": "why it fits" }]`
 
 serve(async (req) => {
   const corsHeaders = makeCorsHeaders(req.headers.get('origin'))
@@ -86,11 +88,11 @@ serve(async (req) => {
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
     if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set')
 
-    // Web-search turns can end on pause_turn (continue the turn) or on prose
-    // without the JSON (nudge once). Loop until we have an array to parse.
+    // Rounds end on pause_turn (continue), prose without JSON, or an empty
+    // array (the model being timid). Nudge and retry, three rounds max.
     let messages: any[] = [{ role: 'user', content: userMessage }]
-    let text = ''
-    for (let attempt = 0; attempt < 2; attempt++) {
+    let raw: any[] = []
+    for (let round = 0; round < 3; round++) {
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
@@ -105,7 +107,7 @@ serve(async (req) => {
       const data = await response.json()
       if (!response.ok) throw new Error(`Claude API error: ${response.status} ${JSON.stringify(data)}`)
 
-      text = (data.content || [])
+      const text = (data.content || [])
         .filter((b: any) => b.type === 'text')
         .map((b: any) => b.text)
         .join('')
@@ -114,22 +116,27 @@ serve(async (req) => {
         messages = [...messages, { role: 'assistant', content: data.content }]
         continue
       }
-      if (/\[\s*\{/.test(text)) break
+      if (/\[\s*\{/.test(text)) {
+        try {
+          const parsed = parseJson(text)
+          if (Array.isArray(parsed) && parsed.length > 0) { raw = parsed; break }
+        } catch { /* nudge below */ }
+      }
       messages = [
         ...messages,
         { role: 'assistant', content: data.content },
-        { role: 'user', content: 'Return ONLY the JSON array of options now. No other text.' },
+        { role: 'user', content: 'Return the JSON array of the best options your searches surfaced. Category pages with real URLs are fine. JSON only, no other text.' },
       ]
     }
+    if (raw.length === 0) throw new Error('No usable options found')
 
-    const raw = parseJson(text)
-    const options = (Array.isArray(raw) ? raw : [])
+    const options = raw
       .filter((o: any) => o && o.title && typeof o.url === 'string' && o.url.startsWith('http'))
       .slice(0, 5)
       .map((o: any) => ({
         title: String(o.title),
         brand: String(o.brand || ''),
-        price: String(o.price || ''),
+        price: /\d/.test(String(o.price || '')) ? String(o.price) : '',
         currency: String(o.currency || currency),
         url: o.url,
         source: String(o.source || new URL(o.url).hostname.replace('www.', '')),
