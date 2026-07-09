@@ -88,11 +88,11 @@ export function HomeScreen() {
           {(loggedToday
             ? [
                 { icon: <PenLine size={17} />, label: 'Log another', onClick: () => navigate('/log-outfit') },
-                { icon: <Camera size={17} />, label: 'Add Item', onClick: () => navigate('/add-item') },
+                { icon: <Camera size={17} />, label: 'Snap a piece', onClick: () => navigate('/add-item') },
               ]
             : [
                 { icon: <Wand2 size={17} />, label: 'Suggest Outfit', onClick: () => navigate('/suggest') },
-                { icon: <Camera size={17} />, label: 'Add Item', onClick: () => navigate('/add-item') },
+                { icon: <Camera size={17} />, label: 'Snap a piece', onClick: () => navigate('/add-item') },
               ]
           ).map((cta, i) => (
             <button
