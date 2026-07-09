@@ -828,7 +828,7 @@ function ShopSheet({ gap, onClose }: { gap: GapCard; onClose: () => void }) {
           </button>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto px-5 pb-10">
+        <div className="flex-1 min-h-0 overflow-y-auto px-5" style={{ paddingBottom: 'calc(2.5rem + env(safe-area-inset-bottom))' }}>
           {error ? (
             <p className="text-[13px] text-text-tertiary text-center py-10">Could not fetch options right now. Try again in a bit.</p>
           ) : !options ? (

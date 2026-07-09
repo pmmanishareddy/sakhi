@@ -13,7 +13,10 @@ export function BottomNav() {
   const navigate = useNavigate()
 
   return (
-    <nav className="flex justify-around items-center px-5 pt-2.5 pb-7 bg-bg shrink-0">
+    <nav
+      className="flex justify-around items-center px-5 pt-2.5 bg-bg shrink-0"
+      style={{ paddingBottom: 'max(1.75rem, calc(0.625rem + env(safe-area-inset-bottom)))' }}
+    >
       {tabs.map(({ path, icon: Icon, label }) => {
         const active = location.pathname === path
         return (

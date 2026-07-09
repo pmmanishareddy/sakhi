@@ -95,7 +95,7 @@ function CropView({ imageUrl, itemName, onDone, onCancel }: {
       onMouseMove={onMove} onMouseUp={() => setDrag(null)}
       onTouchMove={onMove} onTouchEnd={() => setDrag(null)}
     >
-      <div className="flex items-center justify-between px-5 pt-4 pb-2 shrink-0">
+      <div className="flex items-center justify-between px-5 pb-2 shrink-0" style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))' }}>
         <button onClick={onCancel} className="text-sm text-text-secondary bg-transparent border-none cursor-pointer">Cancel</button>
         <span className="text-sm font-semibold text-text-primary truncate mx-3">{itemName}</span>
         <button onClick={doCrop} className="text-sm font-semibold text-accent bg-transparent border-none cursor-pointer">Done</button>
@@ -700,7 +700,7 @@ export function LogOutfitFlow() {
       {/* Add-from-wardrobe picker — for pieces the AI missed or matched wrong */}
       {showAddPicker && (
         <div className="fixed inset-0 z-50 bg-bg flex flex-col">
-          <div className="flex items-center justify-between px-6 pt-5 pb-3 shrink-0">
+          <div className="flex items-center justify-between px-6 pb-3 shrink-0" style={{ paddingTop: 'calc(1.25rem + env(safe-area-inset-top))' }}>
             <div>
               <h2 className="text-[18px] font-bold tracking-tight">Add from wardrobe</h2>
               <p className="text-[12px] text-text-tertiary mt-0.5">Tap anything Sakhi missed</p>
