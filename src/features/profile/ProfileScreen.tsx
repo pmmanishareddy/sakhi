@@ -427,6 +427,7 @@ export function ProfileScreen() {
             <span className="text-[14px] font-medium text-red-400">Delete account</span>
           </button>
 
+          <DiagFooter />
           <div className="h-8" />
         </div>
       </div>
@@ -463,4 +464,21 @@ export function ProfileScreen() {
       <BottomNav />
     </div>
   )
+}
+
+// Tiny device diagnostic: build stamp plus what this phone reports for
+// safe areas and display mode. Reads from a probe element, not assumptions.
+function DiagFooter() {
+  const [diag, setDiag] = useState('')
+  useEffect(() => {
+    const probe = document.createElement('div')
+    probe.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-top);visibility:hidden'
+    document.body.appendChild(probe)
+    const inset = Math.round(probe.getBoundingClientRect().height)
+    probe.remove()
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as unknown as { standalone?: boolean }).standalone
+    const built = new Date(__BUILD_TIME__).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    setDiag(`build ${built} · inset ${inset}px · ${standalone ? 'standalone' : 'browser'} · ${window.innerWidth}x${window.innerHeight}`)
+  }, [])
+  return <p className="text-[10px] text-text-tertiary/60 text-center mt-6">{diag}</p>
 }
