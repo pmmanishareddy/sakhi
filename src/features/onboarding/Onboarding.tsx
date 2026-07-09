@@ -405,8 +405,8 @@ export function Onboarding({ onComplete }: { onComplete?: () => void }) {
 
             <div className="flex flex-col gap-2">
               {[
-                { icon: <Camera size={18} className="text-accent" />, text: 'Log your outfit each day, one photo' },
-                { icon: <Sparkles size={18} className="text-accent" />, text: 'Sakhi spots each piece and files it away' },
+                { icon: <Camera size={18} className="text-accent" />, text: 'Log your outfit each day, one photo. Sakhi files each piece' },
+                { icon: <Sparkles size={18} className="text-accent" />, text: 'Or snap favorite pieces anytime, they get tagged for you' },
                 { icon: <Wand2 size={18} className="text-accent" />, text: 'Ask about anything before you buy, from day one' },
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-2.5 px-4 py-3 bg-card rounded-xl">
@@ -417,6 +417,12 @@ export function Onboarding({ onComplete }: { onComplete?: () => void }) {
             </div>
             <button onClick={() => finish('/log-outfit')} className={btnClass}>
               Log today's outfit
+            </button>
+            <button
+              onClick={() => finish('/add-item')}
+              className="w-full mt-2 py-4 rounded-[14px] text-[15px] font-semibold bg-white/[0.06] text-text-primary border-none cursor-pointer active:scale-[0.97] transition-all"
+            >
+              Add a few favorites
             </button>
             <button
               onClick={() => finish('/')}
