@@ -81,25 +81,41 @@ serve(async (req) => {
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
     if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set')
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 2000,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: userMessage }],
-        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
-      }),
-    })
-    const data = await response.json()
-    if (!response.ok) throw new Error(`Claude API error: ${response.status} ${JSON.stringify(data)}`)
+    // Web-search turns can end on pause_turn (continue the turn) or on prose
+    // without the JSON (nudge once). Loop until we have an array to parse.
+    let messages: any[] = [{ role: 'user', content: userMessage }]
+    let text = ''
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 3000,
+          system: SYSTEM_PROMPT,
+          messages,
+          tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }],
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(`Claude API error: ${response.status} ${JSON.stringify(data)}`)
 
-    // Search responses interleave tool blocks with text; the JSON is in the text
-    const text = (data.content || [])
-      .filter((b: any) => b.type === 'text')
-      .map((b: any) => b.text)
-      .join('')
+      text = (data.content || [])
+        .filter((b: any) => b.type === 'text')
+        .map((b: any) => b.text)
+        .join('')
+
+      if (data.stop_reason === 'pause_turn') {
+        messages = [...messages, { role: 'assistant', content: data.content }]
+        continue
+      }
+      if (text.includes('[')) break
+      messages = [
+        ...messages,
+        { role: 'assistant', content: data.content },
+        { role: 'user', content: 'Return ONLY the JSON array of options now. No other text.' },
+      ]
+    }
 
     const raw = parseJson(text)
     const options = (Array.isArray(raw) ? raw : [])
