@@ -32,12 +32,12 @@ Consider:
 - Wear frequency (which categories get the most use? which are neglected?)
 - Pairing potential (what single addition would unlock the most new outfit combinations?)
 
-Return a JSON array of 3-5 gap cards:
+Return a JSON array of exactly 4 gap cards:
 [{
   "kind": "buy" | "wear" | "fix",
   "title": "short noun phrase, max 5 words",
   "headline": "the hook with real numbers, max 8 words, e.g. '6 sarees. Only 2 blouses.'",
-  "body": "2-3 short sentences with specifics, addressing the user as you",
+  "body": "2 short sentences, under 25 words total, with specifics, addressing the user as you",
   "evidence_refs": [12, 4],
   "evidence_label": "caption for those items, e.g. '6 sarees'",
   "ghost_label": "the missing item in 2-3 words, or null unless kind is buy",
@@ -93,23 +93,23 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization')!
     const { user, supabase } = await getUser(authHeader)
 
-    const { data: items } = await supabase
-      .from('wardrobe_items')
-      .select('id, name, category, primary_color, pattern, formality, occasions, seasons, style_tags, fabric, times_worn, last_worn_at, price')
-      .eq('user_id', user.id)
-      .eq('status', 'active')
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('occasions, style_preferences, location')
-      .eq('id', user.id)
-      .single()
-
-    const { data: recentOutfits } = await supabase
-      .from('outfits')
-      .select('occasion, date')
-      .eq('user_id', user.id)
-      .gte('date', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+    const [{ data: items }, { data: profile }, { data: recentOutfits }] = await Promise.all([
+      supabase
+        .from('wardrobe_items')
+        .select('id, name, category, primary_color, pattern, formality, occasions, seasons, style_tags, fabric, times_worn, last_worn_at, price')
+        .eq('user_id', user.id)
+        .eq('status', 'active'),
+      supabase
+        .from('profiles')
+        .select('occasions, style_preferences, location')
+        .eq('id', user.id)
+        .single(),
+      supabase
+        .from('outfits')
+        .select('occasion, date')
+        .eq('user_id', user.id)
+        .gte('date', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]),
+    ])
 
     // Compute stats on normalized categories
     const catCounts: Record<string, number> = {}

@@ -16,24 +16,29 @@ function stripEmDashes(v: any): any {
 function parseJson(text: string) {
   if (!text) throw new Error('Empty response from Claude')
   const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-  // Web-search responses wrap the array in prose. Walk brackets to pull out
-  // the first complete JSON array, string-aware.
-  const s = cleaned.indexOf('[')
-  if (s < 0) throw new Error('No JSON array in response')
-  let depth = 0, inStr = false, esc = false
-  for (let i = s; i < cleaned.length; i++) {
-    const ch = cleaned[i]
-    if (esc) { esc = false; continue }
-    if (ch === '\\') { esc = true; continue }
-    if (ch === '"') inStr = !inStr
-    if (inStr) continue
-    if (ch === '[') depth++
-    else if (ch === ']') {
-      depth--
-      if (depth === 0) return JSON.parse(cleaned.slice(s, i + 1))
+  // Web-search prose contains markdown citations like [source], so the first
+  // bracket is not necessarily the array. Try every bracket until one parses.
+  let from = 0
+  while (true) {
+    const s = cleaned.indexOf('[', from)
+    if (s < 0) throw new Error('No JSON array in response')
+    let depth = 0, inStr = false, esc = false
+    for (let i = s; i < cleaned.length; i++) {
+      const ch = cleaned[i]
+      if (esc) { esc = false; continue }
+      if (ch === '\\') { esc = true; continue }
+      if (ch === '"') inStr = !inStr
+      if (inStr) continue
+      if (ch === '[') depth++
+      else if (ch === ']') {
+        depth--
+        if (depth === 0) {
+          try { return JSON.parse(cleaned.slice(s, i + 1)) } catch { break }
+        }
+      }
     }
+    from = s + 1
   }
-  throw new Error('Unterminated JSON array in response')
 }
 
 const SYSTEM_PROMPT = `You are Sakhi's shopping scout. You are given a wardrobe gap (a garment role, preferred colors, occasions, and a price band) plus the user's city and currency. Use web search to find real products that are purchasable right now.
@@ -44,7 +49,7 @@ Rules:
 - note: one short sentence on why this one fits the gap. Human voice. Never use em dashes.
 - Only include products you actually found via search, with their real URLs. Never invent a product or URL.
 
-After searching, return ONLY this JSON array, no other text:
+No markdown links or bracketed citations anywhere in your reply. After searching, return ONLY this JSON array, no other text:
 [{ "title": "product name", "brand": "brand", "price": "1,999", "currency": "INR", "url": "https://...", "source": "myntra.com", "note": "why it fits" }]`
 
 serve(async (req) => {
@@ -109,7 +114,7 @@ serve(async (req) => {
         messages = [...messages, { role: 'assistant', content: data.content }]
         continue
       }
-      if (text.includes('[')) break
+      if (/\[\s*\{/.test(text)) break
       messages = [
         ...messages,
         { role: 'assistant', content: data.content },
