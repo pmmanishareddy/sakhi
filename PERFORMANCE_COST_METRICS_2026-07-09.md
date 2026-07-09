@@ -58,6 +58,7 @@ An agent audit measured the deck-schema versions and drove a fix round. Final ve
 | shop-gap reliability | 1 clean success in 3 runs (citation-crashed parser + timid rules) | **3/3 success, 5 options each** |
 | shop-gap latency | 19 to 51s (retry tails) | **18.6 to 19.9s** (rounds capped at 3, nudges rare) |
 | shop-gap repeats | full re-search every tap | **instant** (on-device cache per gap, 7-day expiry, "Found X ago" + Search again) |
+| gaps screen open (any visit) | 16 to 25s or SWR-stale | **0.3s measured** (precomputed gap_results row; recompute runs in background, debounced 45s after wardrobe changes) |
 
 Key audit lessons recorded: the gaps prompt is below Sonnet's 2,048-token minimum cacheable
 prefix so Anthropic prompt caching is a no-op here; category/collection pages are the honest
