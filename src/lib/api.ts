@@ -256,6 +256,7 @@ export async function addWardrobeItem(
     .select()
     .single()
   if (error) throw error
+  scheduleGapsPrecompute()
   return data ? (await signItemImages([data]))[0] : data
 }
 
@@ -292,6 +293,7 @@ export async function addWardrobeItemFromOutfit(
     .select()
     .single()
   if (error) throw error
+  scheduleGapsPrecompute()
   return data
 }
 
@@ -302,6 +304,9 @@ export async function updateWardrobeItem(id: string, updates: Partial<DbWardrobe
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('id', id)
   if (error) throw error
+  // Laundry flips don't change what the wardrobe contains
+  const keys = Object.keys(updates)
+  if (!(keys.length === 1 && keys[0] === 'laundry_status')) scheduleGapsPrecompute()
 }
 
 export async function deleteWardrobeItem(id: string): Promise<void> {
@@ -311,6 +316,7 @@ export async function deleteWardrobeItem(id: string): Promise<void> {
     .update({ status: 'archived', updated_at: new Date().toISOString() })
     .eq('id', id)
   if (error) throw error
+  scheduleGapsPrecompute()
 }
 
 export async function toggleLaundryStatus(id: string, status: 'clean' | 'in_laundry'): Promise<void> {
@@ -435,6 +441,27 @@ export async function getPurchaseVerdict(input: {
 export async function getWardrobeGaps(): Promise<GapCard[]> {
   const res = await callEdgeFunction<{ gaps: GapCard[] }>('wardrobe-gaps', {})
   return res.gaps
+}
+
+// The last computed gap analysis, stored server-side by the edge function
+export async function fetchStoredGaps(): Promise<{ cards: GapCard[]; computed_at: string } | null> {
+  const { data, error } = await supabase
+    .from('gap_results')
+    .select('cards, computed_at')
+    .maybeSingle()
+  if (error) return null
+  return data as { cards: GapCard[]; computed_at: string } | null
+}
+
+// Wardrobe changed: recompute gaps in the background once the dust settles.
+// Debounced so a batch add session costs one run, not one per item.
+let gapsPrecomputeTimer: ReturnType<typeof setTimeout> | null = null
+export function scheduleGapsPrecompute() {
+  if (gapsPrecomputeTimer) clearTimeout(gapsPrecomputeTimer)
+  gapsPrecomputeTimer = setTimeout(() => {
+    gapsPrecomputeTimer = null
+    getWardrobeGaps().catch(() => { /* next screen visit recomputes anyway */ })
+  }, 45_000)
 }
 
 // Real shopping options for a buy-gap, found on the open web.

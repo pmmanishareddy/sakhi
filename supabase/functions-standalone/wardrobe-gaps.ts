@@ -265,7 +265,19 @@ serve(async (req) => {
         } : null,
       }))
 
-    return new Response(JSON.stringify({ success: true, gaps: stripEmDashes(gaps) }), {
+    const cleanGaps = stripEmDashes(gaps)
+
+    // Store the result so the screen loads instantly next time.
+    // Best-effort: a missing table must never fail the request.
+    try {
+      await supabase.from('gap_results').upsert({
+        user_id: user.id,
+        cards: cleanGaps,
+        computed_at: new Date().toISOString(),
+      })
+    } catch { /* precompute storage is optional */ }
+
+    return new Response(JSON.stringify({ success: true, gaps: cleanGaps }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (error) {

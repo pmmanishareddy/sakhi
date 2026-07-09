@@ -5,7 +5,7 @@ import { BottomNav } from '../../components/BottomNav'
 import { Toast } from '../../components/Toast'
 import { useWardrobe } from '../../lib/wardrobe-store'
 import { useAuth } from '../../lib/auth'
-import { getPurchaseVerdict, getWardrobeGaps, getShopOptions, savePurchaseVerdict, fetchVerdictHistory, fetchUserStats, fileToBase64, type VerdictResult, type GapCard, type ShopOption, type DbPurchaseVerdict, type DbWardrobeItem } from '../../lib/api'
+import { getPurchaseVerdict, getWardrobeGaps, fetchStoredGaps, getShopOptions, savePurchaseVerdict, fetchVerdictHistory, fetchUserStats, fileToBase64, type VerdictResult, type GapCard, type ShopOption, type DbPurchaseVerdict, type DbWardrobeItem } from '../../lib/api'
 
 const SCAN_STEPS = [
   { icon: Shirt, text: 'Scanning your wardrobe...' },
@@ -35,6 +35,7 @@ export function SakhiScreen() {
   const [gapCards, setGapCards] = useState<GapCard[]>([])
   const [loadingGaps, setLoadingGaps] = useState(false)
   const [refreshingGaps, setRefreshingGaps] = useState(false)
+  const [gapsAt, setGapsAt] = useState<string | null>(null)
   const [shopFor, setShopFor] = useState<GapCard | null>(null)
   const [pastVerdicts, setPastVerdicts] = useState<DbPurchaseVerdict[]>([])
   const [moneySaved, setMoneySaved] = useState(0)
@@ -161,28 +162,36 @@ export function SakhiScreen() {
     }, 1200)
   }
 
+  const validCards = (cards: GapCard[] | null | undefined) =>
+    (cards || []).filter(g => g && ['buy', 'wear', 'fix'].includes(g.kind))
+
   const handleShowGaps = async () => {
     setView('gaps')
     if (!user) return
     if (items.length < 5) return
 
-    // Show the last result instantly and refresh behind it.
-    // v2 key: the schema changed, old cached cards must not render.
-    const cached = localStorage.getItem('sakhi_gaps_cache_v2')
-    if (cached) {
-      try { setGapCards(JSON.parse(cached)) } catch { /* stale junk, ignore */ }
-      setRefreshingGaps(true)
-    } else {
-      setLoadingGaps(true)
+    // Precomputed row loads instantly; recompute only if the wardrobe
+    // changed since it was written (or nothing is stored yet)
+    const stored = await fetchStoredGaps().catch(() => null)
+    const storedCards = validCards(stored?.cards)
+    if (storedCards.length) {
+      setGapCards(storedCards)
+      setGapsAt(stored!.computed_at)
     }
+    const lastChange = items.reduce((m, i) => (i.updated_at > m ? i.updated_at : m), '')
+    const fresh = stored && storedCards.length > 0 && (!lastChange || stored.computed_at > lastChange)
+    if (fresh) return
+
+    if (storedCards.length) setRefreshingGaps(true)
+    else setLoadingGaps(true)
     try {
-      // Accept only new-schema cards; an old deployed function returns
-      // cards without `kind`, which must not reach the deck
-      const gaps = (await getWardrobeGaps()).filter(g => g && ['buy', 'wear', 'fix'].includes(g.kind))
-      setGapCards(gaps)
-      if (gaps.length) localStorage.setItem('sakhi_gaps_cache_v2', JSON.stringify(gaps))
+      const gaps = validCards(await getWardrobeGaps())
+      if (gaps.length) {
+        setGapCards(gaps)
+        setGapsAt(new Date().toISOString())
+      }
     } catch {
-      if (!cached) {
+      if (!storedCards.length) {
         setGapCards([])
         setToast('Could not load gaps. Try again later.')
       }
@@ -492,7 +501,10 @@ export function SakhiScreen() {
 
             <div className="px-6 mb-5">
               <h1 className="text-[22px] font-bold tracking-tight mb-1.5">What's Missing?</h1>
-              <p className="text-sm text-text-tertiary leading-relaxed">Based on your {items.length} items</p>
+              <p className="text-sm text-text-tertiary leading-relaxed">
+                Based on your {items.length} items
+                {gapsAt && !refreshingGaps && !loadingGaps && ` · checked ${ageLabel(new Date(gapsAt).getTime())}`}
+              </p>
               {refreshingGaps && (
                 <div className="inline-flex items-center gap-2 mt-2.5 px-3 py-1.5 rounded-full bg-card text-[11px] text-text-tertiary">
                   <span className="w-3 h-3 rounded-full border-[1.5px] border-accent border-t-transparent animate-spin" />
