@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Sun, Sparkles, HandHeart, Check, RefreshCw } from 'lucide-react'
 import { Toast } from '../../components/Toast'
 import { useWardrobe } from '../../lib/wardrobe-store'
 import { useAuth } from '../../lib/auth'
-import { suggestOutfit, logOutfit as logOutfitApi, type OutfitSuggestion } from '../../lib/api'
+import { suggestOutfit, logOutfit as logOutfitApi, getProfile, type OutfitSuggestion } from '../../lib/api'
+import { getWeather, type Weather } from '../../lib/weather'
 import type { DbWardrobeItem } from '../../lib/api'
 
 const OCCASIONS = [
@@ -34,7 +35,16 @@ export function SuggestFlow() {
   const [genStep, setGenStep] = useState(0)
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
   const [toast, setToast] = useState('')
+  const [weather, setWeather] = useState<Weather | null>(null)
   const [resultItems, setResultItems] = useState<DbWardrobeItem[]>([])
+
+  useEffect(() => {
+    if (user) {
+      getProfile()
+        .then(p => { if (p?.location) getWeather(p.location).then(setWeather) })
+        .catch(() => {})
+    }
+  }, [user])
   const [, setSuggestion] = useState<OutfitSuggestion | null>(null)
   const [allSeenIds, setAllSeenIds] = useState<string[]>([])
 
@@ -118,10 +128,12 @@ export function SuggestFlow() {
           <div className="px-7 animate-fade-up">
             <h1 className="text-[22px] font-bold tracking-tight mb-2">What's the occasion?</h1>
             <p className="text-sm text-text-tertiary mb-3 leading-relaxed">Pick one and Sakhi will do the rest</p>
-            <div className="flex items-center gap-1.5 mb-6">
-              <Sun size={13} className="text-yellow-400" />
-              <span className="text-xs text-text-tertiary">34°C in Dubai, light fabrics today</span>
-            </div>
+            {weather && (
+              <div className="flex items-center gap-1.5 mb-6">
+                <Sun size={13} className="text-yellow-400" />
+                <span className="text-xs text-text-tertiary">{weather.temp}° right now, {weather.hint}</span>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-2.5 mb-6">
               {OCCASIONS.map(o => (
