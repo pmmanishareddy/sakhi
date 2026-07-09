@@ -64,7 +64,7 @@ function stripEmDashes(v: any): any {
 const SYSTEM_PROMPT = `You are Sakhi, a wardrobe intelligence AI for an Indian wardrobe. Analyze the user's wardrobe and identify gaps based on their ACTUAL lifestyle — not aspirational or generic advice. In every card body, talk directly to the user — always say "you/your", never "the user/she/her". Never comment on the user's body, size, shape, or attractiveness.
 Never use em dashes (—) in anything you write. Short natural sentences, like a friend talking, not marketing copy.
 
-You receive the inventory as a pipe-delimited list (name|category|color|pattern|formality|occasions|fabric|worn|price).
+You receive the inventory as a pipe-delimited list (#index|name|category|color|pattern|formality|occasions|fabric|worn|price). The #index numbers let you reference specific items.
 
 CRITICAL RULES:
 - Prioritize occasions the user FREQUENTLY dresses for. If they rarely go to work, do NOT suggest work items.
@@ -83,12 +83,20 @@ Consider:
 
 Return a JSON array of 3-5 gap cards:
 [{
-  "icon": "emoji",
-  "title": "short title",
-  "body": "2-3 sentence explanation with specific numbers from the wardrobe, addressing the user as you",
-  "tags": ["relevant", "occasions"],
-  "pairing": "optional - e.g. Would pair with 8 existing items"
+  "kind": "buy" | "wear" | "fix",
+  "title": "short noun phrase, max 5 words",
+  "headline": "the hook with real numbers, max 8 words, e.g. '6 sarees. Only 2 blouses.'",
+  "body": "2-3 short sentences with specifics, addressing the user as you",
+  "evidence_refs": [12, 4],
+  "evidence_label": "caption for those items, e.g. '6 sarees'",
+  "ghost_label": "the missing item in 2-3 words, or null unless kind is buy",
+  "unlocks_refs": [7, 19],
+  "gap": { "role": "saree blouse", "occasions": ["wedding"], "colors": ["gold", "cream"], "price_band": [1500, 3000] }
 }]
+
+Card kinds: "buy" is a real purchase gap. "wear" means the user already owns the answer and should wear it more. "fix" is a data cleanup (missing colors, wrong category). Include at least one wear or fix card when honest to do so. Buying nothing is a good outcome.
+evidence_refs: the #index numbers of 1-6 inventory items that PROVE the gap, most relevant first. unlocks_refs: 0-4 #index numbers the fix would pair with. Only use #index numbers that exist.
+"gap" is null unless kind is buy. price_band is two numbers in the user's currency, grounded near prices of comparable items they own.
 
 Categories in the stats are pre-normalized, and the garment role counts are authoritative — use those exact numbers for any counting claims (e.g. total sarees, total bottoms). Never recount from the raw list.
 
@@ -220,17 +228,44 @@ serve(async (req) => {
       userMessage += `\nOccasions in their life: ${(profile as any).occasions.join(', ')}`
     }
 
-    const pipeItems = (items || []).map((i: any) =>
-      `${i.name}|${canonCategory(i.category)}|${i.primary_color?.toLowerCase() === 'unknown' ? '' : i.primary_color}|${i.pattern || ''}|${i.formality}|${(i.occasions || []).join('/')}|${i.fabric || ''}|worn ${i.times_worn}x|${i.price ?? ''}`
+    // Short #index numbers keep uuids out of the prompt; map back after
+    const indexed = items || []
+    const pipeItems = indexed.map((i: any, n: number) =>
+      `#${n}|${i.name}|${canonCategory(i.category)}|${i.primary_color?.toLowerCase() === 'unknown' ? '' : i.primary_color}|${i.pattern || ''}|${i.formality}|${(i.occasions || []).join('/')}|${i.fabric || ''}|worn ${i.times_worn}x|${i.price ?? ''}`
     ).join('\n')
-    userMessage += `\n\nFull inventory (name|category|color|pattern|formality|occasions|fabric|worn|price):\n${pipeItems}`
+    userMessage += `\n\nFull inventory (#index|name|category|color|pattern|formality|occasions|fabric|worn|price):\n${pipeItems}`
 
     const text = await callClaude({
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userMessage }],
     })
 
-    return new Response(JSON.stringify({ success: true, gaps: stripEmDashes(parseJson(text)) }), {
+    const raw = parseJson(text)
+    const refToId = (refs: unknown): string[] =>
+      (Array.isArray(refs) ? refs : [])
+        .map((r: any) => indexed[Number(r)]?.id)
+        .filter(Boolean)
+
+    const gaps = (Array.isArray(raw) ? raw : [])
+      .filter((c: any) => c && ['buy', 'wear', 'fix'].includes(c.kind) && c.title && c.headline)
+      .map((c: any) => ({
+        kind: c.kind,
+        title: c.title,
+        headline: c.headline,
+        body: c.body || '',
+        evidence_ids: refToId(c.evidence_refs),
+        evidence_label: c.evidence_label || '',
+        ghost: c.kind === 'buy' && c.ghost_label ? { label: c.ghost_label } : null,
+        unlocks_ids: refToId(c.unlocks_refs),
+        gap: c.kind === 'buy' && c.gap?.role ? {
+          role: c.gap.role,
+          occasions: Array.isArray(c.gap.occasions) ? c.gap.occasions : [],
+          colors: Array.isArray(c.gap.colors) ? c.gap.colors : [],
+          price_band: Array.isArray(c.gap.price_band) && c.gap.price_band.length === 2 ? c.gap.price_band : [0, 0],
+        } : null,
+      }))
+
+    return new Response(JSON.stringify({ success: true, gaps: stripEmDashes(gaps) }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (error) {

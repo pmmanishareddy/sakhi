@@ -18,11 +18,12 @@
 - [ ] Edit logged outfits — add/remove items from an outfit, update the occasion, from the outfit detail screen
 - [ ] Add streaming to AI features — use Claude's SSE streaming + edge function proxy so partial results arrive faster. Best suited for suggest-outfit (show styling_note progressively) or a future chat-style Sakhi interaction. For JSON responses, consider splitting into a plain-text first line (verdict/title) + JSON body so the headline can render immediately while the rest streams in.
 
-## Backlog — gap analysis as the brand-collab surface (decided 2026-07-09)
-Direction: wardrobe-gaps grows into a brand-collaboration feature (gap cards that can lead to partner products). Quality is the monetizable asset — stays on Sonnet; the Haiku downgrade was considered for latency and explicitly rejected.
-- [ ] Tighten gaps output — 3-4 cards, 2-sentence bodies, drop optional `pairing` field. Halves the 23s latency (~825 output tokens is the entire wait) and the $0.017/call cost. Do this before or with the precompute work.
-- [ ] Precompute + store gap analysis — run in background on wardrobe change (item add/edit/archive), store cards as structured rows (role, occasion, colors, price band, body text), serve the Gaps screen instantly from the table with a "refreshed" timestamp. Solves latency completely, cuts cost to one run per wardrobe change, and the structured rows are the foundation for brand-catalog matching later.
-- [ ] Brand-collab matching layer (future) — match stored gap objects against partner catalogs; every recommendation must stay grounded in the user's real wardrobe or it reads as an ad.
+## Gap analysis as the brand-collab surface (decided 2026-07-09)
+Direction: wardrobe-gaps grows into a brand-collaboration feature. Quality is the monetizable asset — stays on Sonnet; the Haiku downgrade was considered for latency and explicitly rejected.
+- [x] Deck redesign (2026-07-09) — swipeable full-screen gap cards with kind badges (Worth buying / Already yours / Quick fix), photo evidence collages from the user's own items, dashed ghost tile for the missing piece, mix summary line, per-kind actions, closing honesty card. New structured GapCard schema (kind, evidence_ids, ghost, unlocks_ids, gap {role, occasions, colors, price_band}) with #index→uuid mapping server-side.
+- [x] "Show me options" shopping (2026-07-09) — NEW `shop-gap` edge function: Claude + web search finds 3-5 real purchasable products (title, brand, price, url, source) matching the gap object and the user's country/currency; bottom sheet UI. Every option carries a `sponsored` flag; sponsored placements will always be labeled to stay truthful. Cost note: web search ~$0.01/search + tokens, only on explicit user tap.
+- [ ] Precompute + store gap analysis — run in background on wardrobe change (item add/edit/archive), store cards as structured rows, serve the Gaps screen instantly with a "refreshed" timestamp. Solves latency completely and cuts cost to one run per wardrobe change.
+- [ ] Brand-collab matching layer (future) — match stored gap objects against partner catalogs, injected as labeled sponsored options in the shop sheet; every recommendation must stay grounded in the user's real wardrobe or it reads as an ad.
 
 ## Backlog — small latency wins
 - [ ] Parallelize sequential DB fetches in edge functions with Promise.all where not already done (check suggest-outfit; wardrobe-gaps standalone already does)

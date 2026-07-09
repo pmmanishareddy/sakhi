@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Camera, Image, ArrowLeft, Check, XCircle, CheckCircle, AlertTriangle, Shirt, Search, BarChart3, ChevronDown, ChevronUp, Lightbulb, Plus } from 'lucide-react'
+import { Camera, Image, ArrowLeft, Check, XCircle, CheckCircle, AlertTriangle, Shirt, Search, BarChart3, ChevronDown, ChevronUp, Plus, ShoppingBag, ExternalLink, X, Wand2, Pencil } from 'lucide-react'
 import { BottomNav } from '../../components/BottomNav'
 import { Toast } from '../../components/Toast'
 import { useWardrobe } from '../../lib/wardrobe-store'
 import { useAuth } from '../../lib/auth'
-import { getPurchaseVerdict, getWardrobeGaps, savePurchaseVerdict, fetchVerdictHistory, fetchUserStats, fileToBase64, type VerdictResult, type GapCard, type DbPurchaseVerdict } from '../../lib/api'
+import { getPurchaseVerdict, getWardrobeGaps, getShopOptions, savePurchaseVerdict, fetchVerdictHistory, fetchUserStats, fileToBase64, type VerdictResult, type GapCard, type ShopOption, type DbPurchaseVerdict, type DbWardrobeItem } from '../../lib/api'
 
 const SCAN_STEPS = [
   { icon: Shirt, text: 'Scanning your wardrobe...' },
@@ -35,6 +35,7 @@ export function SakhiScreen() {
   const [gapCards, setGapCards] = useState<GapCard[]>([])
   const [loadingGaps, setLoadingGaps] = useState(false)
   const [refreshingGaps, setRefreshingGaps] = useState(false)
+  const [shopFor, setShopFor] = useState<GapCard | null>(null)
   const [pastVerdicts, setPastVerdicts] = useState<DbPurchaseVerdict[]>([])
   const [moneySaved, setMoneySaved] = useState(0)
 
@@ -165,8 +166,9 @@ export function SakhiScreen() {
     if (!user) return
     if (items.length < 5) return
 
-    // Show the last result instantly and refresh behind it
-    const cached = localStorage.getItem('sakhi_gaps_cache')
+    // Show the last result instantly and refresh behind it.
+    // v2 key: the schema changed, old cached cards must not render.
+    const cached = localStorage.getItem('sakhi_gaps_cache_v2')
     if (cached) {
       try { setGapCards(JSON.parse(cached)) } catch { /* stale junk, ignore */ }
       setRefreshingGaps(true)
@@ -174,9 +176,11 @@ export function SakhiScreen() {
       setLoadingGaps(true)
     }
     try {
-      const gaps = await getWardrobeGaps()
+      // Accept only new-schema cards; an old deployed function returns
+      // cards without `kind`, which must not reach the deck
+      const gaps = (await getWardrobeGaps()).filter(g => g && ['buy', 'wear', 'fix'].includes(g.kind))
       setGapCards(gaps)
-      localStorage.setItem('sakhi_gaps_cache', JSON.stringify(gaps))
+      if (gaps.length) localStorage.setItem('sakhi_gaps_cache_v2', JSON.stringify(gaps))
     } catch {
       if (!cached) {
         setGapCards([])
@@ -516,30 +520,13 @@ export function SakhiScreen() {
                 </button>
               </div>
             ) : (
-              <div className="px-5 flex flex-col gap-3 mb-8">
-                {gapCards.map((gap, i) => (
-                  <div key={i} className="bg-card rounded-[16px] p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-lg">{gap.icon}</span>
-                      <span className="text-[14px] font-semibold text-text-primary">{gap.title}</span>
-                    </div>
-                    <p className="text-[13px] text-text-secondary leading-relaxed mb-3">{gap.body}</p>
-                    {gap.tags && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {gap.tags.map(tag => (
-                          <span key={tag} className="px-2.5 py-1 rounded-lg bg-white/[0.06] text-[11px] font-medium text-text-tertiary">{tag}</span>
-                        ))}
-                      </div>
-                    )}
-                    {gap.pairing && (
-                      <div className="flex items-center gap-1.5 mt-2">
-                        <Lightbulb size={13} className="text-accent" />
-                        <span className="text-[12px] text-accent font-medium">{gap.pairing}</span>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+              <GapDeck
+                cards={gapCards}
+                items={items}
+                onShop={gap => setShopFor(gap)}
+                onStyle={() => navigate('/suggest')}
+                onFix={id => id && navigate(`/item/${id}`)}
+              />
             )}
           </div>
         )}
@@ -596,7 +583,234 @@ export function SakhiScreen() {
       </div>
 
       {(view === 'main' || view === 'history') && <BottomNav />}
+      {shopFor?.gap && <ShopSheet gap={shopFor} onClose={() => setShopFor(null)} />}
       <Toast message={toast} visible={!!toast} onHide={() => setToast('')} />
+    </div>
+  )
+}
+
+// ── Gap deck: one gap per card, swiped like stories ──
+
+const KIND_BADGE: Record<GapCard['kind'], { label: string; cls: string }> = {
+  buy: { label: 'Worth buying', cls: 'text-accent bg-accent-soft' },
+  wear: { label: 'Already yours', cls: 'text-success bg-success/10' },
+  fix: { label: 'Quick fix', cls: 'text-text-secondary bg-white/[0.06]' },
+}
+
+function GapDeck({ cards, items, onShop, onStyle, onFix }: {
+  cards: GapCard[]
+  items: DbWardrobeItem[]
+  onShop: (card: GapCard) => void
+  onStyle: (card: GapCard) => void
+  onFix: (itemId?: string) => void
+}) {
+  const [deckIndex, setDeckIndex] = useState(0)
+  const deckRef = useRef<HTMLDivElement>(null)
+  const itemsById = new Map(items.map(i => [i.id, i]))
+  const resolve = (ids: string[]) => ids.map(id => itemsById.get(id)).filter(Boolean) as DbWardrobeItem[]
+
+  const counts = { buy: 0, wear: 0, fix: 0 }
+  for (const c of cards) counts[c.kind]++
+  const mix = [
+    counts.buy > 0 && `${counts.buy} worth buying`,
+    counts.wear > 0 && `${counts.wear} already in your closet`,
+    counts.fix > 0 && `${counts.fix} quick fix${counts.fix > 1 ? 'es' : ''}`,
+  ].filter(Boolean).join(' · ')
+
+  const onScroll = () => {
+    const el = deckRef.current
+    if (!el?.firstElementChild) return
+    const cardW = (el.firstElementChild as HTMLElement).clientWidth + 12
+    setDeckIndex(Math.min(cards.length, Math.round(el.scrollLeft / cardW)))
+  }
+
+  return (
+    <div className="mb-8">
+      <p className="px-6 -mt-2 mb-3 text-[12px] text-text-tertiary">{mix}</p>
+
+      {/* Progress dots */}
+      <div className="flex justify-center gap-1.5 mb-3">
+        {[...cards, null].map((c, i) => (
+          <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${
+            i === deckIndex ? 'w-5 bg-accent' : `w-1.5 ${c && c.kind === 'buy' ? 'bg-accent/40' : 'bg-white/[0.12]'}`
+          }`} />
+        ))}
+      </div>
+
+      <div
+        ref={deckRef}
+        onScroll={onScroll}
+        className="flex gap-3 overflow-x-auto px-6 pb-4 snap-x snap-mandatory"
+        style={{ scrollbarWidth: 'none' }}
+      >
+        {cards.map((card, i) => {
+          const evidence = resolve(card.evidence_ids).slice(0, card.ghost ? 3 : 4)
+          const extra = card.evidence_ids.length - evidence.length
+          const unlocks = resolve(card.unlocks_ids).slice(0, 4)
+          const badge = KIND_BADGE[card.kind]
+          return (
+            <div key={i} className="snap-center shrink-0 w-[82vw] max-w-[330px] bg-card rounded-[20px] p-5 flex flex-col cascade-item" style={{ animationDelay: `${i * 120}ms` }}>
+              <span className={`self-start px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${badge.cls}`}>{badge.label}</span>
+
+              {/* Evidence collage + ghost slot */}
+              {(evidence.length > 0 || card.ghost) && (
+                <div className="grid grid-cols-2 gap-2 mt-4">
+                  {evidence.map((it, j) => (
+                    <div key={it.id} className="relative aspect-square rounded-[12px] overflow-hidden bg-white/[0.04]">
+                      {it.image_url && <img src={it.image_url} alt={it.name} className="w-full h-full object-cover" />}
+                      {j === evidence.length - 1 && extra > 0 && !card.ghost && (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-[15px] font-bold text-white">+{extra}</div>
+                      )}
+                    </div>
+                  ))}
+                  {card.ghost && (
+                    <div className="aspect-square rounded-[12px] border border-dashed border-accent/50 bg-accent-soft flex flex-col items-center justify-center gap-1.5">
+                      <Plus size={20} className="text-accent" />
+                      <span className="text-[11px] text-accent font-medium text-center px-2 leading-tight">{card.ghost.label}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+              {card.evidence_label && <p className="text-[11px] text-text-tertiary mt-2">{card.evidence_label}</p>}
+
+              <h2 className="text-[19px] font-bold tracking-tight mt-3 leading-snug">{card.title}</h2>
+              <p className="text-[14px] text-accent font-semibold mt-1">{card.headline}</p>
+              <p className="text-[13px] text-text-secondary leading-relaxed mt-2.5 flex-1">{card.body}</p>
+
+              {unlocks.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-[10px] uppercase tracking-wider text-text-tertiary mb-1.5">Would pair with</p>
+                  <div className="flex">
+                    {unlocks.map((it, j) => (
+                      <div key={it.id} className={`w-10 h-10 rounded-[10px] overflow-hidden border-2 border-bg bg-white/[0.04] ${j > 0 ? '-ml-2' : ''}`}>
+                        {it.image_url && <img src={it.image_url} alt="" className="w-full h-full object-cover" />}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* One action per kind */}
+              {card.kind === 'buy' && card.gap && (
+                <button
+                  onClick={() => onShop(card)}
+                  className="mt-4 w-full py-3.5 rounded-[13px] text-[14px] font-semibold bg-accent text-white border-none cursor-pointer active:scale-[0.97] transition-all flex items-center justify-center gap-2"
+                >
+                  <ShoppingBag size={16} /> Show me options
+                </button>
+              )}
+              {card.kind === 'wear' && (
+                <button
+                  onClick={() => onStyle(card)}
+                  className="mt-4 w-full py-3.5 rounded-[13px] text-[14px] font-semibold bg-white/[0.06] text-text-primary border-none cursor-pointer active:scale-[0.97] transition-all flex items-center justify-center gap-2"
+                >
+                  <Wand2 size={16} /> Style it
+                </button>
+              )}
+              {card.kind === 'fix' && (
+                <button
+                  onClick={() => onFix(card.evidence_ids[0])}
+                  className="mt-4 w-full py-3.5 rounded-[13px] text-[14px] font-semibold bg-white/[0.06] text-text-primary border-none cursor-pointer active:scale-[0.97] transition-all flex items-center justify-center gap-2"
+                >
+                  <Pencil size={15} /> Fix it now
+                </button>
+              )}
+            </div>
+          )
+        })}
+
+        {/* Closing summary card */}
+        <div className="snap-center shrink-0 w-[82vw] max-w-[330px] bg-card rounded-[20px] p-5 flex flex-col items-center justify-center text-center cascade-item" style={{ animationDelay: `${cards.length * 120}ms` }}>
+          <div className="glow-orb w-14 h-14 rounded-full bg-accent-soft flex items-center justify-center mb-4">
+            <Check size={24} className="text-accent" />
+          </div>
+          <h2 className="text-[18px] font-bold tracking-tight">That's the honest picture</h2>
+          <p className="text-[13px] text-text-secondary leading-relaxed mt-2">{mix}.</p>
+          <p className="text-[12px] text-text-tertiary leading-relaxed mt-3">Sakhi only suggests buying when your closet truly needs it.</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Shopping options sheet: real products for a buy-gap ──
+
+function ShopSheet({ gap, onClose }: { gap: GapCard; onClose: () => void }) {
+  const [options, setOptions] = useState<ShopOption[] | null>(null)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    if (!gap.gap) return
+    getShopOptions(gap.gap)
+      .then(setOptions)
+      .catch(() => setError(true))
+  }, [gap])
+
+  return (
+    <div className="fixed inset-0 z-[70] flex flex-col justify-end" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div
+        className="relative bg-bg rounded-t-[24px] max-h-[80%] flex flex-col animate-fade-up"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-6 pt-5 pb-3 shrink-0">
+          <div>
+            <h2 className="text-[17px] font-bold tracking-tight">{gap.ghost?.label || gap.gap?.role}</h2>
+            <p className="text-[12px] text-text-tertiary mt-0.5">Found on the open web. Sponsored picks will always say so.</p>
+          </div>
+          <button onClick={onClose} className="p-2 bg-white/[0.06] rounded-full border-none cursor-pointer text-text-secondary flex">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="flex-1 min-h-0 overflow-y-auto px-5 pb-10">
+          {error ? (
+            <p className="text-[13px] text-text-tertiary text-center py-10">Could not fetch options right now. Try again in a bit.</p>
+          ) : !options ? (
+            <div className="flex flex-col gap-2.5 py-2">
+              <div className="flex items-center gap-2.5 justify-center py-3 text-[13px] text-text-tertiary">
+                <span className="w-4 h-4 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+                Sakhi is looking around for you
+              </div>
+              {[0, 1, 2].map(i => (
+                <div key={i} className="h-[72px] rounded-[14px] bg-card animate-pulse" />
+              ))}
+            </div>
+          ) : options.length === 0 ? (
+            <p className="text-[13px] text-text-tertiary text-center py-10">Nothing good enough came up. Sakhi doesn't pad results.</p>
+          ) : (
+            <div className="flex flex-col gap-2.5 py-2">
+              {options.map((o, i) => (
+                <a
+                  key={i}
+                  href={o.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3.5 p-3.5 rounded-[14px] bg-card no-underline cascade-item active:scale-[0.98] transition-transform"
+                  style={{ animationDelay: `${i * 90}ms` }}
+                >
+                  <div className="w-10 h-10 rounded-[10px] bg-white/[0.06] flex items-center justify-center shrink-0">
+                    <ShoppingBag size={17} className="text-text-secondary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[13px] font-semibold text-text-primary truncate">{o.title}</span>
+                      {o.sponsored && (
+                        <span className="shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-accent-soft text-accent">Sponsored</span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-text-tertiary truncate mt-0.5">
+                      {[o.brand, o.price && `${o.currency === 'INR' ? '₹' : o.currency + ' '}${o.price}`, o.source].filter(Boolean).join(' · ')}
+                    </div>
+                    {o.note && <div className="text-[11px] text-text-secondary mt-1 leading-snug">{o.note}</div>}
+                  </div>
+                  <ExternalLink size={14} className="text-text-tertiary shrink-0" />
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

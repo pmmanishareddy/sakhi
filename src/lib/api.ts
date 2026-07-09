@@ -126,11 +126,33 @@ export interface VerdictResult {
 }
 
 export interface GapCard {
-  icon: string
+  kind: 'buy' | 'wear' | 'fix'
   title: string
+  headline: string
   body: string
-  tags?: string[]
-  pairing?: string
+  evidence_ids: string[]
+  evidence_label: string
+  ghost: { label: string } | null
+  unlocks_ids: string[]
+  // Structured gap object: drives the shopping lookup today and
+  // brand-catalog matching later
+  gap: {
+    role: string
+    occasions: string[]
+    colors: string[]
+    price_band: [number, number]
+  } | null
+}
+
+export interface ShopOption {
+  title: string
+  brand: string
+  price: string
+  currency: string
+  url: string
+  source: string
+  note: string
+  sponsored: boolean
 }
 
 export interface MatchResult {
@@ -413,6 +435,13 @@ export async function getPurchaseVerdict(input: {
 export async function getWardrobeGaps(): Promise<GapCard[]> {
   const res = await callEdgeFunction<{ gaps: GapCard[] }>('wardrobe-gaps', {})
   return res.gaps
+}
+
+// Real shopping options for a buy-gap, found on the open web.
+// Sponsored results (future brand collabs) arrive labeled and stay labeled.
+export async function getShopOptions(gap: NonNullable<GapCard['gap']>): Promise<ShopOption[]> {
+  const res = await callEdgeFunction<{ options: ShopOption[] }>('shop-gap', { gap })
+  return res.options
 }
 
 export async function matchOutfitPhoto(imageBase64: string, contentType: string): Promise<MatchResult> {
