@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../lib/auth'
-import { Sparkles } from 'lucide-react'
+import { MirrorMark } from '../../components/MirrorMark'
 
 export function LoginScreen() {
   const navigate = useNavigate()
@@ -46,7 +46,7 @@ export function LoginScreen() {
   return (
     <div className="flex flex-col items-center justify-center h-full bg-bg px-7">
       <div className="w-20 h-20 rounded-full bg-accent-soft flex items-center justify-center mb-6">
-        <Sparkles size={36} className="text-accent" />
+        <MirrorMark size={38} />
       </div>
 
       <h1 className="text-[28px] font-light tracking-[10px] uppercase text-text-primary mb-3">Sakhi</h1>
