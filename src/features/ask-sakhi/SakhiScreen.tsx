@@ -734,17 +734,59 @@ function GapDeck({ cards, items, onShop, onStyle, onFix }: {
 }
 
 // ── Shopping options sheet: real products for a buy-gap ──
+// Results are cached on-device per exact gap for 7 days: the same gap tapped
+// twice should never pay for a second web search. Cached results say their age
+// and offer a refresh.
+
+const SHOP_CACHE_KEY = 'sakhi_shop_cache'
+const SHOP_TTL_MS = 7 * 24 * 3600 * 1000
+
+function loadShopCache(): Record<string, { options: ShopOption[]; at: number }> {
+  try { return JSON.parse(localStorage.getItem(SHOP_CACHE_KEY) || '{}') } catch { return {} }
+}
+
+function ageLabel(at: number): string {
+  const mins = (Date.now() - at) / 60000
+  if (mins < 60) return 'just now'
+  if (mins < 36 * 60) return `${Math.max(1, Math.round(mins / 60))}h ago`
+  return `${Math.round(mins / 1440)} days ago`
+}
 
 function ShopSheet({ gap, onClose }: { gap: GapCard; onClose: () => void }) {
   const [options, setOptions] = useState<ShopOption[] | null>(null)
+  const [foundAt, setFoundAt] = useState<number | null>(null)
   const [error, setError] = useState(false)
+  const cacheKey = JSON.stringify(gap.gap)
+
+  const fetchFresh = () => {
+    setOptions(null)
+    setFoundAt(null)
+    setError(false)
+    getShopOptions(gap.gap!)
+      .then(opts => {
+        setOptions(opts)
+        setFoundAt(Date.now())
+        const cache = loadShopCache()
+        cache[cacheKey] = { options: opts, at: Date.now() }
+        for (const k of Object.keys(cache)) {
+          if (Date.now() - cache[k].at > SHOP_TTL_MS) delete cache[k]
+        }
+        try { localStorage.setItem(SHOP_CACHE_KEY, JSON.stringify(cache)) } catch { /* storage full */ }
+      })
+      .catch(() => setError(true))
+  }
 
   useEffect(() => {
     if (!gap.gap) return
-    getShopOptions(gap.gap)
-      .then(setOptions)
-      .catch(() => setError(true))
-  }, [gap])
+    const hit = loadShopCache()[cacheKey]
+    if (hit && Date.now() - hit.at < SHOP_TTL_MS) {
+      setOptions(hit.options)
+      setFoundAt(hit.at)
+      return
+    }
+    fetchFresh()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cacheKey])
 
   return (
     <div className="fixed inset-0 z-[70] flex flex-col justify-end" onClick={onClose}>
@@ -754,9 +796,20 @@ function ShopSheet({ gap, onClose }: { gap: GapCard; onClose: () => void }) {
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-6 pt-5 pb-3 shrink-0">
-          <div>
+          <div className="min-w-0">
             <h2 className="text-[17px] font-bold tracking-tight">{gap.ghost?.label || gap.gap?.role}</h2>
             <p className="text-[12px] text-text-tertiary mt-0.5">Found on the open web. Sponsored picks will always say so.</p>
+            {options && foundAt && (
+              <p className="text-[11px] text-text-tertiary mt-1">
+                Found {ageLabel(foundAt)}
+                {Date.now() - foundAt > 3600_000 && (
+                  <>
+                    {' · '}
+                    <span className="text-accent cursor-pointer" onClick={fetchFresh}>Search again</span>
+                  </>
+                )}
+              </p>
+            )}
           </div>
           <button onClick={onClose} className="p-2 bg-white/[0.06] rounded-full border-none cursor-pointer text-text-secondary flex">
             <X size={16} />
