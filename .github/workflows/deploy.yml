@@ -3,6 +3,16 @@ name: Deploy to Netlify
 on:
   push:
     branches: [main]
+    # Skip builds when nothing that ships to the site changed:
+    # docs, and edge functions (those deploy via the Supabase dashboard)
+    paths-ignore:
+      - '**.md'
+      - 'supabase/**'
+
+# Rapid pushes: cancel the superseded build, deploy only the latest
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
 
 jobs:
   deploy:
