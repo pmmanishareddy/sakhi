@@ -323,7 +323,7 @@ export function LogOutfitFlow() {
         {step === 0 && (
           <div className="px-7 animate-fade-up">
             <h1 className="text-[22px] font-bold tracking-tight mb-2">Log today's outfit</h1>
-            <p className="text-sm text-text-tertiary mb-6 leading-relaxed">Record what you wore in ten seconds</p>
+            <p className="text-sm text-text-tertiary mb-6 leading-relaxed">Ten seconds before you head out. New pieces join your closet by themselves</p>
 
             <div className="flex flex-col gap-3">
               <button
@@ -335,7 +335,7 @@ export function LogOutfitFlow() {
                 </div>
                 <div>
                   <div className="text-[15px] font-semibold text-accent">Take a picture</div>
-                  <div className="text-xs text-text-tertiary mt-1 leading-relaxed">Snap a photo and Sakhi matches items from your wardrobe</div>
+                  <div className="text-xs text-text-tertiary mt-1 leading-relaxed">A mirror selfie works great. Sakhi spots every piece, even new ones</div>
                 </div>
               </button>
 

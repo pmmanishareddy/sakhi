@@ -99,7 +99,7 @@ export function Onboarding({ onComplete }: { onComplete?: () => void }) {
   const selectedOccasions = Object.keys(occasionFreq)
   const canContinueOccasions = selectedOccasions.length >= 2
 
-  const finish = async () => {
+  const finish = async (destination: string = '/') => {
     if (onComplete) {
       onComplete()
     } else {
@@ -129,7 +129,7 @@ export function Onboarding({ onComplete }: { onComplete?: () => void }) {
       } catch { /* best-effort */ }
     }
 
-    navigate('/')
+    navigate(destination)
   }
 
   const btnClass = "w-full mt-7 py-4 rounded-[14px] text-[15px] font-semibold bg-accent text-white border-none cursor-pointer transition-all active:scale-[0.97] disabled:opacity-35 disabled:pointer-events-none"
@@ -400,14 +400,14 @@ export function Onboarding({ onComplete }: { onComplete?: () => void }) {
             )}
 
             <p className="text-sm text-text-tertiary mb-8 text-center leading-relaxed">
-              Start with 5 items to unlock smart suggestions.
+              No need to catalog your whole closet. It builds itself as you go.
             </p>
 
             <div className="flex flex-col gap-2">
               {[
-                { icon: <Camera size={18} className="text-accent" />, text: 'Snap photos of your clothes' },
-                { icon: <Wand2 size={18} className="text-accent" />, text: 'AI tags everything automatically' },
-                { icon: <Sparkles size={18} className="text-accent" />, text: 'Get smart outfit suggestions daily' },
+                { icon: <Camera size={18} className="text-accent" />, text: 'Log your outfit each day, one photo' },
+                { icon: <Sparkles size={18} className="text-accent" />, text: 'Sakhi spots each piece and files it away' },
+                { icon: <Wand2 size={18} className="text-accent" />, text: 'Ask about anything before you buy, from day one' },
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-2.5 px-4 py-3 bg-card rounded-xl">
                   {item.icon}
@@ -415,11 +415,11 @@ export function Onboarding({ onComplete }: { onComplete?: () => void }) {
                 </div>
               ))}
             </div>
-            <button onClick={finish} className={btnClass}>
-              Start adding items
+            <button onClick={() => finish('/log-outfit')} className={btnClass}>
+              Log today's outfit
             </button>
             <button
-              onClick={finish}
+              onClick={() => finish('/')}
               className="w-full py-3.5 text-[13px] text-text-tertiary bg-transparent border-none cursor-pointer"
             >
               Explore first

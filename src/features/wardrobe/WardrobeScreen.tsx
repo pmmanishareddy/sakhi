@@ -78,6 +78,30 @@ export function WardrobeScreen() {
           })}
         </div>
 
+        {/* Empty closet: logging is the easy way in */}
+        {items.length === 0 && (
+          <div className="px-7 py-14 text-center animate-fade-up">
+            <div className="text-3xl mb-4">🪞</div>
+            <h2 className="text-[17px] font-bold tracking-tight mb-2">Your closet starts with one photo</h2>
+            <p className="text-[13px] text-text-tertiary leading-relaxed mb-6">
+              Log what you're wearing today and Sakhi files each piece away.
+              No cataloging session needed.
+            </p>
+            <button
+              onClick={() => navigate('/log-outfit')}
+              className="w-full py-4 rounded-[14px] text-[15px] font-semibold bg-accent text-white border-none cursor-pointer active:scale-[0.97] transition-all"
+            >
+              Log today's outfit
+            </button>
+            <button
+              onClick={() => navigate('/add-item')}
+              className="w-full py-3.5 text-[13px] text-text-tertiary bg-transparent border-none cursor-pointer mt-1"
+            >
+              Or snap a single piece
+            </button>
+          </div>
+        )}
+
         {/* Grid */}
         <div className="grid grid-cols-2 gap-2.5 px-5 mb-10">
           {filtered.map((item) => (

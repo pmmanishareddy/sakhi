@@ -204,8 +204,8 @@ export function MeetSakhi({ onDone }: { onDone: () => void }) {
                   <p className="text-[13px] text-text-tertiary mb-4 leading-relaxed">Three habits, ten seconds each:</p>
                   <div className="flex flex-col gap-2.5">
                     {[
-                      { icon: <Camera size={17} />, title: 'Snap your clothes', sub: 'One photo per piece, I fill in the details' },
-                      { icon: <PenLine size={17} />, title: 'Log what you wear', sub: 'This is how I learn what you actually love' },
+                      { icon: <PenLine size={17} />, title: 'Log your outfit daily', sub: 'One mirror photo before you head out. Your closet builds itself' },
+                      { icon: <Camera size={17} />, title: 'Add favorites anytime', sub: 'A quick snap for pieces you want styled sooner' },
                       { icon: <Wand2 size={17} />, title: 'Ask before you buy', sub: 'I\'ll tell you honestly if it\'s worth it' },
                     ].map((s, i) => (
                       <div key={s.title} className="cascade-item flex items-center gap-3.5 p-3 rounded-[14px] bg-card" style={{ animationDelay: `${500 + i * 160}ms` }}>

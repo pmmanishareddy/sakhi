@@ -111,25 +111,25 @@ function GettingStarted({ itemCount, outfitCount }: { itemCount: number; outfitC
 
   const steps = [
     {
+      done: outfitCount > 0,
+      icon: <PenLine size={17} />,
+      title: outfitCount > 0 ? 'First outfit logged' : "Log today's outfit",
+      sub: outfitCount > 0 ? 'Your closet has begun' : 'One mirror photo. Sakhi spots each piece',
+      to: '/log-outfit',
+    },
+    {
       done: itemCount >= 5,
       icon: <Camera size={17} />,
-      title: itemCount >= 5 ? 'Wardrobe started' : 'Add your first 5 pieces',
-      sub: itemCount >= 5 ? `${itemCount} pieces catalogued` : `${itemCount}/5 added so far`,
+      title: itemCount >= 5 ? 'Five pieces in' : 'Grow to 5 pieces',
+      sub: itemCount >= 5 ? `${itemCount} pieces and counting` : `${itemCount}/5. Logging adds them, or snap favorites`,
       to: '/add-item',
     },
     {
       done: suggested,
       icon: <Wand2 size={17} />,
-      title: 'Get your first outfit',
-      sub: suggested ? 'Sakhi styled you' : 'Styled from what you own',
+      title: 'Get your first styled look',
+      sub: suggested ? 'Sakhi styled you' : 'Styled from your own closet',
       to: '/suggest',
-    },
-    {
-      done: outfitCount > 0,
-      icon: <PenLine size={17} />,
-      title: 'Log what you wore',
-      sub: outfitCount > 0 ? 'Wear history growing' : 'Teaches Sakhi your real taste',
-      to: '/log-outfit',
     },
   ]
   const doneCount = steps.filter(s => s.done).length
