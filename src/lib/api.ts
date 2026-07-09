@@ -470,7 +470,8 @@ export async function addItemsToOutfit(outfitId: string, itemIds: string[]): Pro
   if (error) throw error
 }
 
-export async function updateOutfit(outfitId: string, updates: { occasion?: string; event_name?: string | null }): Promise<void> {
+export async function updateOutfit(outfitId: string, updates: { occasion?: string; event_name?: string | null; image_url?: string }): Promise<void> {
+  if (updates.image_url) updates = { ...updates, image_url: canonicalImageUrl(updates.image_url) }
   const { error } = await supabase.from('outfits').update(updates).eq('id', outfitId)
   if (error) throw error
 }

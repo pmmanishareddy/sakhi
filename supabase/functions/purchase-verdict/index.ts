@@ -23,17 +23,17 @@ If an image is attached, use it to identify the item being considered.
 - pairings_count: count the specific wardrobe items this would genuinely pair with — count them, don't guess
 - estimated_cpw: price ÷ realistic wears over 2 years, given how often the user dresses for this item's occasions. Same currency as the given price (assume INR if unlabeled). 0 if no price given.
 
-Be concise. 1-2 sentences for the reason. Max 2 evidence points, each under 15 words.
+Be brief. The reason stays under 30 words, overlap under 15 words naming at most 3 items. Max 2 evidence points, each under 12 words.
 
 Return JSON:
 {
   "verdict": "buy" | "skip" | "maybe",
   "title": "e.g. Skip This One or Great Addition",
-  "reason": "1-2 sentence summary addressing the user as you",
+  "reason": "under 30 words, addressing the user as you",
   "overlap": "e.g. You already own 3 similar black tops: <names>" or null,
   "pairings_count": number,
   "estimated_cpw": number,
-  "evidence": [{ "label": "short label", "text": "under 15 words" }]
+  "evidence": [{ "label": "short label", "text": "under 12 words" }]
 }
 
 Return ONLY valid JSON, no markdown.`

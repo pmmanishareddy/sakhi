@@ -34,6 +34,7 @@ export function SakhiScreen() {
   const [evidenceExpanded, setEvidenceExpanded] = useState(false)
   const [gapCards, setGapCards] = useState<GapCard[]>([])
   const [loadingGaps, setLoadingGaps] = useState(false)
+  const [refreshingGaps, setRefreshingGaps] = useState(false)
   const [pastVerdicts, setPastVerdicts] = useState<DbPurchaseVerdict[]>([])
   const [moneySaved, setMoneySaved] = useState(0)
 
@@ -164,15 +165,26 @@ export function SakhiScreen() {
     if (!user) return
     if (items.length < 5) return
 
-    setLoadingGaps(true)
+    // Show the last result instantly and refresh behind it
+    const cached = localStorage.getItem('sakhi_gaps_cache')
+    if (cached) {
+      try { setGapCards(JSON.parse(cached)) } catch { /* stale junk, ignore */ }
+      setRefreshingGaps(true)
+    } else {
+      setLoadingGaps(true)
+    }
     try {
       const gaps = await getWardrobeGaps()
       setGapCards(gaps)
+      localStorage.setItem('sakhi_gaps_cache', JSON.stringify(gaps))
     } catch {
-      setGapCards([])
-      setToast('Could not load gaps. Try again later.')
+      if (!cached) {
+        setGapCards([])
+        setToast('Could not load gaps. Try again later.')
+      }
     } finally {
       setLoadingGaps(false)
+      setRefreshingGaps(false)
     }
   }
 
@@ -477,6 +489,12 @@ export function SakhiScreen() {
             <div className="px-6 mb-5">
               <h1 className="text-[22px] font-bold tracking-tight mb-1.5">What's Missing?</h1>
               <p className="text-sm text-text-tertiary leading-relaxed">Based on your {items.length} items</p>
+              {refreshingGaps && (
+                <div className="inline-flex items-center gap-2 mt-2.5 px-3 py-1.5 rounded-full bg-card text-[11px] text-text-tertiary">
+                  <span className="w-3 h-3 rounded-full border-[1.5px] border-accent border-t-transparent animate-spin" />
+                  Taking a fresh look at your closet
+                </div>
+              )}
             </div>
 
             {items.length < 5 ? (

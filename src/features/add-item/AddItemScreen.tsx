@@ -32,6 +32,7 @@ export function AddItemScreen() {
   const { user } = useAuth()
   const { items, refresh } = useWardrobe()
   const fileRef = useRef<HTMLInputElement>(null)
+  const pendingAnalysis = useRef<ReturnType<typeof analyzeItemPhoto> | null>(null)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [step, setStep] = useState(0)
@@ -138,6 +139,13 @@ export function AddItemScreen() {
     if (!file) return
     setImageFile(file)
     setPreview(URL.createObjectURL(file))
+    // Start the AI analysis right away, while the user is still looking at
+    // the preview. By the time they tap Analyze it's often already done.
+    if (user) {
+      const p = fileToBase64(file).then(b64 => analyzeItemPhoto(b64, file.type))
+      p.catch(() => {})
+      pendingAnalysis.current = p
+    }
     setStep(1)
   }
 
@@ -159,8 +167,10 @@ export function AddItemScreen() {
 
     try {
       if (user && imageFile) {
-        const base64 = await fileToBase64(imageFile)
-        const analysis = await analyzeItemPhoto(base64, imageFile.type)
+        const analysis = pendingAnalysis.current
+          ? await pendingAnalysis.current
+          : await fileToBase64(imageFile).then(b64 => analyzeItemPhoto(b64, imageFile.type))
+        pendingAnalysis.current = null
 
         stepTimer.forEach(clearTimeout)
         setItemName(analysis.name)

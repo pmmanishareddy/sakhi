@@ -4,7 +4,7 @@ import { ArrowLeft, Camera, Image, LayoutGrid, Check, X, Plus, Calendar, Sparkle
 import { Toast } from '../../components/Toast'
 import { useWardrobe } from '../../lib/wardrobe-store'
 import { useAuth } from '../../lib/auth'
-import { matchOutfitPhoto, logOutfit as logOutfitApi, fileToBase64, uploadImage, fetchCircles, addWardrobeItem, addItemsToOutfit, type MatchResult, type DbSocialCircle } from '../../lib/api'
+import { matchOutfitPhoto, logOutfit as logOutfitApi, fileToBase64, uploadImage, updateOutfit, fetchCircles, addWardrobeItem, addItemsToOutfit, type MatchResult, type DbSocialCircle } from '../../lib/api'
 
 const OCCASIONS = ['Office', 'Casual', 'Party', 'Wedding', 'Date', 'Brunch', 'Festival']
 const DEFAULT_CIRCLES = ['Work team', 'College friends', 'Family', 'Partner']
@@ -259,24 +259,25 @@ export function LogOutfitFlow() {
     setSaving(true)
     try {
       if (user) {
-        let imageUrl: string | undefined
-        if (selfieFile) {
-          imageUrl = await uploadImage(selfieFile, 'outfits')
-        }
-
         const itemIds = step === 3
           ? getMatchedDisplay().filter(m => !m.isNew && !removedItems.has(m.id)).map(m => m.id)
           : Array.from(selectedItems)
 
+        // Save the outfit row first (fast), let the photo upload finish in
+        // the background and attach itself when done
         const outfit = await logOutfitApi({
           occasion,
           itemIds,
           socialCircles: Array.from(socialCircles),
           eventName: eventName || undefined,
-          imageUrl,
           source: selfieFile ? 'photo' : 'manual',
         })
         setLastOutfitId(outfit.id)
+        if (selfieFile) {
+          uploadImage(selfieFile, 'outfits')
+            .then(url => updateOutfit(outfit.id, { image_url: url }))
+            .catch(err => console.error('Outfit photo upload failed:', err))
+        }
       }
     } catch { /* toast anyway */ }
     setSaving(false)
