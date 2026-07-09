@@ -35,6 +35,19 @@ Heavy personal use (per week: 5 suggestions, 3 verdicts, 2 photo logs, 5 item ad
 1 gaps check) ≈ **$0.60/month** — roughly 16× headroom under the $10 Anthropic spend cap,
 or ~15 users at this usage level before per-user rate limits (backlogged) matter.
 
+## Tier 1 latency fixes (shipped later the same day)
+
+Measured numbers above are the pre-fix baseline. What changed:
+
+| Feature | Before (felt) | After (felt) | How |
+|---|---|---|---|
+| Wardrobe gaps, repeat visits | 23s spinner | Instant | Last result shows immediately from a local cache; the ~23s refresh runs behind a small "taking a fresh look" pill and swaps in when ready. First-ever visit unchanged. |
+| Add item analysis | ~4s after tapping Analyze | Usually under 1s | Analysis starts the moment the photo is picked, while the user is on the preview. The Analyze tap awaits an already-running (often finished) call. Same tokens, zero extra cost. |
+| Log outfit save | 2 to 5s on mobile upload | Sub-second | Outfit row saves first; the selfie uploads in the background and attaches itself via an image_url patch. Failure mode: outfit logged, photo missing, no data loss. |
+| Purchase verdict | 7.6s | ~5 to 6s expected | Tighter output budgets in the prompt (reason under 30 words, 2 evidence points under 12 words). Needs the purchase-verdict.ts paste; re-measure after. |
+
+Still open (Tier 2/3, see PLAN.md backlog): precompute "Today's look" daily suggestion, precompute gaps on wardrobe change (also the brand-collab foundation), SSE streaming for on-demand calls. After those, the only cold waits left are first-run gaps and a cold suggest.
+
 ## Findings
 
 - **Wardrobe-gaps is output-bound**: ~825 output tokens at Sonnet generation speed *is*
