@@ -76,11 +76,11 @@ export function MeetSakhi({ onDone }: { onDone: () => void }) {
             <h1 className="text-[30px] font-bold tracking-tight leading-tight cascade-item" style={{ animationDelay: '250ms' }}>
               Hi, I'm Sakhi
             </h1>
-            <p className="text-[17px] text-text-secondary mt-4 leading-relaxed cascade-item" style={{ animationDelay: '700ms' }}>
-              Think of me as your closet's memory, and your personal stylist.
+            <p className="text-[19px] text-text-primary font-semibold mt-4 leading-relaxed cascade-item" style={{ animationDelay: '700ms' }}>
+              One mirror photo a day. I do the rest.
             </p>
             <p className="text-[15px] text-text-tertiary mt-3 leading-relaxed cascade-item" style={{ animationDelay: '1300ms' }}>
-              I remember every piece you own, what you wear, and what's actually worth buying next.
+              Your daily outfit builds your closet by itself. I learn what you love wearing, style you from your own clothes, and tell you honestly what's worth buying.
             </p>
             <button
               onClick={() => setScene(1)}
