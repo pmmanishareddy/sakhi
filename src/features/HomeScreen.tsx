@@ -63,7 +63,7 @@ export function HomeScreen() {
             </div>
             <div>
               <div className="text-[16px] font-bold text-text-primary">What are you wearing today?</div>
-              <div className="text-xs text-text-tertiary mt-1">One mirror photo before you head out</div>
+              <div className="text-xs text-text-tertiary mt-1">One mirror photo, any time today</div>
             </div>
           </button>
         ) : (
