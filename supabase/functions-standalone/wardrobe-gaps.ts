@@ -52,6 +52,15 @@ function parseJson(text: string) {
   return JSON.parse(text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim())
 }
 
+// Claude reaches for em dashes no matter what the prompt says. Strip them
+// from every string so the app voice stays clean.
+function stripEmDashes(v: any): any {
+  if (typeof v === 'string') return v.replace(/\s*[—–]\s*/g, ', ')
+  if (Array.isArray(v)) return v.map(stripEmDashes)
+  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, stripEmDashes(x)]))
+  return v
+}
+
 const SYSTEM_PROMPT = `You are Sakhi, a wardrobe intelligence AI for an Indian wardrobe. Analyze the user's wardrobe and identify gaps based on their ACTUAL lifestyle — not aspirational or generic advice. In every card body, talk directly to the user — always say "you/your", never "the user/she/her". Never comment on the user's body, size, shape, or attractiveness.
 Never use em dashes (—) in anything you write. Short natural sentences, like a friend talking, not marketing copy.
 
@@ -221,7 +230,7 @@ serve(async (req) => {
       messages: [{ role: 'user', content: userMessage }],
     })
 
-    return new Response(JSON.stringify({ success: true, gaps: parseJson(text) }), {
+    return new Response(JSON.stringify({ success: true, gaps: stripEmDashes(parseJson(text)) }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (error) {

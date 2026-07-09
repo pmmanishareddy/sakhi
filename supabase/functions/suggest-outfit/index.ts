@@ -3,6 +3,15 @@ import { makeCorsHeaders } from '../_shared/cors.ts'
 import { getUser } from '../_shared/auth.ts'
 import { callClaude, parseJsonResponse } from '../_shared/claude.ts'
 
+// Claude reaches for em dashes no matter what the prompt says. Strip them
+// from every string so the app voice stays clean.
+function stripEmDashes(v: any): any {
+  if (typeof v === 'string') return v.replace(/\s*[—–]\s*/g, ', ')
+  if (Array.isArray(v)) return v.map(stripEmDashes)
+  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, stripEmDashes(x)]))
+  return v
+}
+
 const SYSTEM_PROMPT = `You are Sakhi, an expert personal stylist AI for an Indian wardrobe app. You build complete, coherent outfits from the user's wardrobe inventory for a specific occasion.
 
 You receive a pipe-delimited list of wardrobe items (id|name|category|color|pattern|formality|fabric|style) pre-filtered for the occasion. The style column is authoritative: W = western-only, E = ethnic-only, V = versatile (works with either). Return exactly one outfit using ONLY items from the list.
@@ -383,7 +392,7 @@ serve(async (req) => {
         image_url: itemMap.get(i.id)!.image_url || '',
       }))
 
-    return new Response(JSON.stringify({ success: true, outfit: suggestion }), {
+    return new Response(JSON.stringify({ success: true, outfit: stripEmDashes(suggestion) }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (error) {
