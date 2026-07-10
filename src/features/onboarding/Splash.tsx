@@ -5,12 +5,12 @@ export function Splash() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    const t = setTimeout(() => navigate('/onboarding'), 2200)
+    const t = setTimeout(() => navigate('/login'), 2200)
     return () => clearTimeout(t)
   }, [navigate])
 
   return (
-    <div className="flex flex-col items-center justify-center h-full bg-bg" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+    <div className="flex flex-col items-center justify-center h-full bg-bg">
       <div className="text-5xl font-light tracking-[14px] uppercase text-text-primary animate-fade-up">
         Sakhi
       </div>

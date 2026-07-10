@@ -95,7 +95,7 @@ function CropView({ imageUrl, itemName, onDone, onCancel }: {
       onMouseMove={onMove} onMouseUp={() => setDrag(null)}
       onTouchMove={onMove} onTouchEnd={() => setDrag(null)}
     >
-      <div className="flex items-center justify-between px-5 pb-2 shrink-0" style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))' }}>
+      <div className="flex items-center justify-between px-5 pt-4 pb-2 shrink-0">
         <button onClick={onCancel} className="text-sm text-text-secondary bg-transparent border-none cursor-pointer">Cancel</button>
         <span className="text-sm font-semibold text-text-primary truncate mx-3">{itemName}</span>
         <button onClick={doCrop} className="text-sm font-semibold text-accent bg-transparent border-none cursor-pointer">Done</button>
