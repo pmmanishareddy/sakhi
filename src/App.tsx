@@ -58,7 +58,6 @@ function AppRoutes() {
     return (
       <Routes>
         <Route path="/splash" element={<Splash />} />
-        <Route path="/onboarding" element={<Onboarding onComplete={markOnboarded} />} />
         <Route path="/login" element={<LoginScreen />} />
         <Route path="/privacy" element={<PrivacyScreen />} />
         <Route path="*" element={<Navigate to="/login" />} />

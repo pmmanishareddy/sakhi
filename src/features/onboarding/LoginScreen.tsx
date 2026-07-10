@@ -103,13 +103,6 @@ export function LoginScreen() {
         {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
       </button>
 
-      <button
-        onClick={() => navigate('/onboarding')}
-        className="w-full py-3.5 text-[13px] text-text-tertiary bg-transparent border-none cursor-pointer mt-3"
-      >
-        Continue without account
-      </button>
-
       <p className="text-[11px] text-text-tertiary mt-4 leading-relaxed text-center">
         By continuing you agree to how Sakhi handles your data. Photos and wardrobe stay private to you,
         and AI features are powered by Anthropic's Claude.{' '}
