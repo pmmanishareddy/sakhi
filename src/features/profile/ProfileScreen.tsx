@@ -475,10 +475,14 @@ function DiagFooter() {
     probe.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-top);visibility:hidden'
     document.body.appendChild(probe)
     const inset = Math.round(probe.getBoundingClientRect().height)
+    probe.style.height = '100dvh'
+    const dvh = Math.round(probe.getBoundingClientRect().height)
     probe.remove()
     const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as unknown as { standalone?: boolean }).standalone
     const built = new Date(__BUILD_TIME__).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-    setDiag(`build ${built} · inset ${inset}px · ${standalone ? 'standalone' : 'browser'} · ${window.innerWidth}x${window.innerHeight}`)
+    const icb = document.documentElement.clientHeight
+    const root = document.getElementById('root')?.getBoundingClientRect().height ?? 0
+    setDiag(`build ${built} · inset ${inset}px · ${standalone ? 'standalone' : 'browser'} · ${window.innerWidth}x${window.innerHeight} · dvh ${dvh} · icb ${icb} · root ${Math.round(root)} · screen ${screen.height}`)
   }, [])
   return <p className="text-[10px] text-text-tertiary/60 text-center mt-6">{diag}</p>
 }

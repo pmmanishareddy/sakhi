@@ -70,6 +70,17 @@ body {
   }
 }
 
+/* Installed app: the viewport IS the screen, but iOS computes dvh short of
+   the home-indicator area in standalone mode, leaving a dead band under the
+   nav. The plain percentage chain (html→body→#root) is the reliable one here;
+   dvh stays for in-browser Safari where it tracks the collapsing toolbar. */
+@media (display-mode: standalone) {
+  #root {
+    height: 100% !important;
+    max-height: none !important;
+  }
+}
+
 input, textarea {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-appearance: none;
