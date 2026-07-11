@@ -17,6 +17,16 @@ registerSW({
   },
 })
 
+// The updated worker activates immediately (skipWaiting + clientsClaim) but
+// nothing reloads the page into it — without this, the new build only shows
+// up after a lucky quit-and-relaunch, and deploys appear to never arrive.
+let reloadingForUpdate = false
+navigator.serviceWorker?.addEventListener('controllerchange', () => {
+  if (reloadingForUpdate) return
+  reloadingForUpdate = true
+  window.location.reload()
+})
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
