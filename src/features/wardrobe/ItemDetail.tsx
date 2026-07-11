@@ -70,7 +70,10 @@ export function ItemDetail() {
   }
 
   return (
-    <div className="flex flex-col h-full min-h-0 overflow-y-auto bg-bg">
+    {/* Plain scroll container on purpose: as a flex column, iOS shrinks every
+        child to fit the viewport before scrolling, vertically crushing the
+        stats card (and anything else with overflow-hidden) */}
+    <div className="h-full min-h-0 overflow-y-auto bg-bg">
       {/* Back */}
       <button onClick={() => navigate('/wardrobe')} className="flex items-center gap-1 px-5 py-3 text-sm text-text-secondary bg-transparent border-none cursor-pointer">
         <ArrowLeft size={18} /> Wardrobe
