@@ -8,7 +8,7 @@
   - Status bar is opaque `black` on purpose — `black-translucent` triggers an iOS viewport bug (layout viewport 62px shorter than the screen → dead band under the nav; `height=device-height` is ignored). iOS bakes this meta into the icon at Add-to-Home-Screen, so changing it needs a delete + re-add.
   - `.app-shell` must stay in normal flow (not absolute) or `#root`'s safe-area padding is silently bypassed.
   - The app self-updates: foregrounding triggers a SW update check and a `controllerchange` reload (main.tsx). Without both halves, installed iPhones stay on stale builds forever.
-  - Profile tab diag footer (build stamp · inset · dvh/icb/root/screen) is the first thing to ask for on any device layout report.
+  - Device diag line (build stamp · inset · dvh/icb/root/screen) is hidden behind 5 quick taps on the Profile-tab name — first thing to ask for on any device layout report.
 
 ## TODO
 - [x] Profile/settings screen (`/profile`, 4th nav tab) — edit name, gender, home city, and all onboarding style preferences; log out; delete account
