@@ -4,7 +4,7 @@ import { Wand2, Camera, PenLine, Sun, Check, ChevronRight, Sparkles, X } from 'l
 import { BottomNav } from '../components/BottomNav'
 import { useWardrobe } from '../lib/wardrobe-store'
 import { useAuth } from '../lib/auth'
-import { fetchOutfitHistory, getProfile, type OutfitWithItems } from '../lib/api'
+import { fetchOutfitHistory, getProfile, setAppFlag, type OutfitWithItems } from '../lib/api'
 import { getWeather, type Weather } from '../lib/weather'
 
 // Local calendar date; outfit.date from the DB may be the UTC day, so
@@ -19,13 +19,17 @@ export function HomeScreen() {
   const { items } = useWardrobe()
   const [outfits, setOutfits] = useState<OutfitWithItems[]>([])
   const [weather, setWeather] = useState<Weather | null>(null)
+  const [appFlags, setAppFlags] = useState<Record<string, boolean> | null>(null)
   const name = localStorage.getItem('sakhi_name') || ''
 
   useEffect(() => {
     if (user) {
       fetchOutfitHistory().then(setOutfits).catch(() => {})
       getProfile()
-        .then(p => { if (p?.location) getWeather(p.location).then(setWeather) })
+        .then(p => {
+          setAppFlags(p?.app_flags || {})
+          if (p?.location) getWeather(p.location).then(setWeather)
+        })
         .catch(() => {})
     }
   }, [user])
@@ -106,7 +110,7 @@ export function HomeScreen() {
           ))}
         </div>
 
-        <GettingStarted itemCount={items.length} outfitCount={outfits.length} />
+        <GettingStarted itemCount={items.length} outfitCount={outfits.length} flags={appFlags} />
 
         {/* Logged Outfits, framed as the week's rhythm */}
         <div className="px-6 pt-6 pb-3.5 text-sm font-semibold text-text-secondary">This week</div>
@@ -178,13 +182,21 @@ function OutfitCell({ outfit, items, onOpen }: {
 }
 
 // First-run journey: three real actions, tracked against live data.
-// Disappears for good once completed (or dismissed from the done state).
-function GettingStarted({ itemCount, outfitCount }: { itemCount: number; outfitCount: number }) {
+// Disappears for good once completed or dismissed. The flag lives on the
+// profile (localStorage is just a fast cache — it's wiped on reinstall).
+function GettingStarted({ itemCount, outfitCount, flags }: { itemCount: number; outfitCount: number; flags: Record<string, boolean> | null }) {
   const navigate = useNavigate()
   const [dismissed, setDismissed] = useState(() => !!localStorage.getItem('sakhi_journey_done'))
-  const suggested = !!localStorage.getItem('sakhi_first_suggestion')
+  const suggested = !!localStorage.getItem('sakhi_first_suggestion') || !!flags?.first_suggestion
 
-  if (dismissed) return null
+  useEffect(() => {
+    if (flags?.journey_done) {
+      localStorage.setItem('sakhi_journey_done', 'true')
+      setDismissed(true)
+    }
+  }, [flags])
+
+  if (dismissed || flags === null) return null
 
   const steps = [
     {
@@ -214,8 +226,18 @@ function GettingStarted({ itemCount, outfitCount }: { itemCount: number; outfitC
 
   const finish = () => {
     localStorage.setItem('sakhi_journey_done', 'true')
+    setAppFlag('journey_done')
     setDismissed(true)
   }
+
+  // Completing the journey retires the card on its own — the congrats card
+  // shows this one time, and the persisted flag keeps it gone from then on
+  useEffect(() => {
+    if (allDone && !localStorage.getItem('sakhi_journey_done')) {
+      localStorage.setItem('sakhi_journey_done', 'true')
+      setAppFlag('journey_done')
+    }
+  }, [allDone])
 
   if (allDone) {
     return (

@@ -4,7 +4,7 @@ import { ArrowLeft, Camera, Image, Sparkles, Check, ChevronDown, RotateCcw, Imag
 import { Toast } from '../../components/Toast'
 import { useAuth } from '../../lib/auth'
 import { useWardrobe } from '../../lib/wardrobe-store'
-import { analyzeItemPhoto, addWardrobeItem, fileToBase64 } from '../../lib/api'
+import { analyzeItemPhoto, addWardrobeItem, fileForAnalysis } from '../../lib/api'
 import { pairsWith } from '../../lib/style-rules'
 
 const CATEGORY_OPTIONS = ['T-Shirt', 'Top', 'Shirt', 'Blouse', 'Saree Blouse', 'Crop Top', 'Saree', 'Dress', 'Jumpsuit', 'Pants', 'Jeans', 'Shorts', 'Skirt', 'Leggings', 'Jacket', 'Blazer', 'Sweater', 'Hoodie', 'Kurta', 'Dupatta', 'Jewelry', 'Shoes', 'Sandals', 'Heels', 'Sneakers', 'Bags', 'Sunglasses', 'Watch', 'Belt', 'Scarf', 'Hat']
@@ -100,8 +100,8 @@ export function AddItemScreen() {
       setBatchResults(prev => prev.map((r, j) => j === i ? { ...r, status: 'analyzing' } : r))
       try {
         if (user) {
-          const base64 = await fileToBase64(batchFiles[i])
-          const analysis = await analyzeItemPhoto(base64, batchFiles[i].type)
+          const { base64, mediaType } = await fileForAnalysis(batchFiles[i])
+          const analysis = await analyzeItemPhoto(base64, mediaType)
           await addWardrobeItem({
             name: analysis.name,
             category: analysis.category,
@@ -142,7 +142,7 @@ export function AddItemScreen() {
     // Start the AI analysis right away, while the user is still looking at
     // the preview. By the time they tap Analyze it's often already done.
     if (user) {
-      const p = fileToBase64(file).then(b64 => analyzeItemPhoto(b64, file.type))
+      const p = fileForAnalysis(file).then(({ base64, mediaType }) => analyzeItemPhoto(base64, mediaType))
       p.catch(() => {})
       pendingAnalysis.current = p
     }
@@ -169,7 +169,7 @@ export function AddItemScreen() {
       if (user && imageFile) {
         const analysis = pendingAnalysis.current
           ? await pendingAnalysis.current
-          : await fileToBase64(imageFile).then(b64 => analyzeItemPhoto(b64, imageFile.type))
+          : await fileForAnalysis(imageFile).then(({ base64, mediaType }) => analyzeItemPhoto(base64, mediaType))
         pendingAnalysis.current = null
 
         stepTimer.forEach(clearTimeout)

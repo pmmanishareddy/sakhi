@@ -67,8 +67,13 @@ You receive the wardrobe as a pipe-delimited list: id|name|category|color|patter
 - Category only: right type but color is hard to tell from photo = MEDIUM confidence
 - No match: nothing in wardrobe fits → add to new_items
 
+## FOOTWEAR SUBTYPE IS A HARD BOUNDARY
+- Heels, flats, sandals, sneakers, and boots are DIFFERENT categories — never match across them.
+- Photo shows black heels, wardrobe has only "Black Flats" → NOT a match. Add Heels to new_items.
+- Color agreement never overrides a subtype mismatch.
+
 ## IMPORTANT:
-- Err on the side of MATCHING existing items rather than creating new ones
+- Err on the side of MATCHING existing items rather than creating new ones — except across footwear subtypes, which never cross-match
 - If the user owns black flats and the photo shows black flats, match them — don't create a new "Black Flats"
 - Only add to new_items if you're confident the item is NOT in the wardrobe
 

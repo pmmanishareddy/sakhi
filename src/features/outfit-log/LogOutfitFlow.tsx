@@ -4,7 +4,7 @@ import { ArrowLeft, Camera, Image, LayoutGrid, Check, X, Plus, Calendar, Sparkle
 import { Toast } from '../../components/Toast'
 import { useWardrobe } from '../../lib/wardrobe-store'
 import { useAuth } from '../../lib/auth'
-import { matchOutfitPhoto, logOutfit as logOutfitApi, fileToBase64, uploadImage, updateOutfit, fetchCircles, addWardrobeItem, addItemsToOutfit, type MatchResult, type DbSocialCircle } from '../../lib/api'
+import { matchOutfitPhoto, logOutfit as logOutfitApi, fileForAnalysis, uploadImage, updateOutfit, fetchCircles, addWardrobeItem, addItemsToOutfit, type MatchResult, type DbSocialCircle } from '../../lib/api'
 
 const OCCASIONS = ['Office', 'Casual', 'Party', 'Wedding', 'Date', 'Brunch', 'Festival']
 const DEFAULT_CIRCLES = ['Work team', 'College friends', 'Family', 'Partner']
@@ -144,7 +144,7 @@ export function LogOutfitFlow() {
   const [showAddPicker, setShowAddPicker] = useState(false)
   const [dbCircles, setDbCircles] = useState<DbSocialCircle[]>([])
   const [removedItems, setRemovedItems] = useState<Set<string>>(new Set())
-  const [rejectedMatches] = useState<Array<{ name: string; category: string; description?: string }>>([])
+  const [rejectedMatches, setRejectedMatches] = useState<Array<{ id: string; name: string; category: string; description?: string }>>([])
   const [lastOutfitId, setLastOutfitId] = useState<string | null>(null)
   const [cropTarget, setCropTarget] = useState<null | { type: 'new'; croppedId: string; name: string; category: string; style?: string; description?: string }>(null)
   const [croppedIds, setCroppedIds] = useState<Set<string>>(new Set())
@@ -201,7 +201,13 @@ export function LogOutfitFlow() {
       // AI-matched piece — membership is tracked via removedItems
       setRemovedItems(s => {
         const next = new Set(s)
-        next.has(id) ? next.delete(id) : next.add(id)
+        if (next.has(id)) {
+          next.delete(id)
+          // Re-adding the match withdraws the "wrong match" offer
+          setRejectedMatches(rs => rs.filter(r => r.id !== id))
+        } else {
+          next.add(id)
+        }
         return next
       })
     } else {
@@ -222,8 +228,8 @@ export function LogOutfitFlow() {
 
     try {
       if (user) {
-        const base64 = await fileToBase64(file)
-        const result = await matchOutfitPhoto(base64, file.type)
+        const { base64, mediaType } = await fileForAnalysis(file)
+        const result = await matchOutfitPhoto(base64, mediaType)
         console.log('Match results:', JSON.stringify(result))
         setMatchedResults(result)
         setStep(3)
@@ -245,6 +251,8 @@ export function LogOutfitFlow() {
   useEffect(() => {
     // Fresh photo → fresh manual adjustments
     setAddedIds(new Set())
+    setRemovedItems(new Set())
+    setRejectedMatches([])
     setShowAddPicker(false)
   }, [selfieFile])
 
@@ -417,6 +425,14 @@ export function LogOutfitFlow() {
                           setAddedIds(s => { const next = new Set(s); next.delete(m.id); return next })
                         } else {
                           setRemovedItems(s => new Set(s).add(m.id))
+                          // Rejecting an AI match often means "right piece, wrong
+                          // item" — offer to crop it into the wardrobe afterwards
+                          if (!m.isNew) {
+                            const w = items.find(i => i.id === m.id)
+                            if (w) setRejectedMatches(rs => rs.some(r => r.id === w.id)
+                              ? rs
+                              : [...rs, { id: w.id, name: w.name, category: w.subcategory || w.category }])
+                          }
                         }
                       }}
                       className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-card border border-white/10 flex items-center justify-center cursor-pointer"

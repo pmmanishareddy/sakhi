@@ -10,6 +10,10 @@
   - The app self-updates: foregrounding triggers a SW update check and a `controllerchange` reload (main.tsx). Without both halves, installed iPhones stay on stale builds forever.
   - Profile tab diag footer (build stamp · inset · dvh/icb/root/screen) is the first thing to ask for on any device layout report.
 
+## Pending manual deploys (2026-07-11 field-test fixes)
+- [ ] Run `supabase/migrations/003_app_flags.sql` in the Supabase SQL editor (adds `profiles.app_flags` — journey/checklist flags survive reinstalls; code degrades gracefully until then)
+- [ ] Paste updated `supabase/functions-standalone/match-outfit-photo.ts` into the dashboard (footwear-subtype hard boundary: heels no longer match flats)
+
 ## TODO
 - [x] Profile/settings screen (`/profile`, 4th nav tab) — edit name, gender, home city, and all onboarding style preferences; log out; delete account
 - [x] Deleting a wardrobe item no longer deletes it from logged outfits — delete is now a soft delete (`status='archived'`); outfit history joins item data so archived pieces still render; AI features filter to active items
@@ -33,5 +37,5 @@ Direction: wardrobe-gaps grows into a brand-collaboration feature. Quality is th
 
 ## Backlog — small latency wins
 - [ ] Parallelize sequential DB fetches in edge functions with Promise.all where not already done (check suggest-outfit; wardrobe-gaps standalone already does)
-- [ ] Compress photos to ~1100px instead of 1600px before upload/analysis — fewer vision tokens, slightly faster first token, no visible quality loss for garment recognition
+- [x] Compress photos to ~1100px before AI analysis (`fileForAnalysis`) — raw phone photos were 3-8 MB of base64 upload; this was most of the "matching your wardrobe" wait. Storage uploads stay at 1600px.
 

@@ -5,7 +5,7 @@ import { BottomNav } from '../../components/BottomNav'
 import { Toast } from '../../components/Toast'
 import { useWardrobe } from '../../lib/wardrobe-store'
 import { useAuth } from '../../lib/auth'
-import { getPurchaseVerdict, getWardrobeGaps, fetchStoredGaps, getShopOptions, savePurchaseVerdict, fetchVerdictHistory, fetchUserStats, fileToBase64, type VerdictResult, type GapCard, type ShopOption, type DbPurchaseVerdict, type DbWardrobeItem } from '../../lib/api'
+import { getPurchaseVerdict, getWardrobeGaps, fetchStoredGaps, getShopOptions, savePurchaseVerdict, fetchVerdictHistory, fetchUserStats, fileForAnalysis, type VerdictResult, type GapCard, type ShopOption, type DbPurchaseVerdict, type DbWardrobeItem } from '../../lib/api'
 
 const SCAN_STEPS = [
   { icon: Shirt, text: 'Scanning your wardrobe...' },
@@ -84,9 +84,9 @@ export function SakhiScreen() {
       if (user) {
         const input: Parameters<typeof getPurchaseVerdict>[0] = {}
         if (itemPhoto) {
-          const base64 = await fileToBase64(itemPhoto)
+          const { base64, mediaType } = await fileForAnalysis(itemPhoto)
           input.image_base64 = base64
-          input.image_content_type = itemPhoto.type
+          input.image_content_type = mediaType
         }
         if (itemName.trim()) input.item_name = itemName.trim()
         if (itemPrice.trim()) input.item_price = parseFloat(itemPrice)

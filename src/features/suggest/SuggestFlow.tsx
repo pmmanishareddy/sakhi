@@ -4,7 +4,7 @@ import { ArrowLeft, Sun, Sparkles, HandHeart, Check, RefreshCw } from 'lucide-re
 import { Toast } from '../../components/Toast'
 import { useWardrobe } from '../../lib/wardrobe-store'
 import { useAuth } from '../../lib/auth'
-import { suggestOutfit, logOutfit as logOutfitApi, getProfile, type OutfitSuggestion } from '../../lib/api'
+import { suggestOutfit, logOutfit as logOutfitApi, getProfile, setAppFlag, type OutfitSuggestion } from '../../lib/api'
 import { getWeather, type Weather } from '../../lib/weather'
 import type { DbWardrobeItem } from '../../lib/api'
 
@@ -64,7 +64,10 @@ export function SuggestFlow() {
       if (user) {
         const result = await suggestOutfit(occasion, pinnedIds, excludeIds)
         stepTimers.forEach(clearTimeout)
-        localStorage.setItem('sakhi_first_suggestion', 'true')
+        if (!localStorage.getItem('sakhi_first_suggestion')) {
+          localStorage.setItem('sakhi_first_suggestion', 'true')
+          setAppFlag('first_suggestion')
+        }
         setSuggestion(result)
         const matchedItems = result.items
           .map(ri => items.find(i => i.id === ri.id))

@@ -71,6 +71,7 @@ export interface DbProfile {
   style_preferences: Record<string, string>
   location: string | null
   currency: string
+  app_flags?: Record<string, boolean>
   created_at: string
   updated_at: string
 }
@@ -729,6 +730,21 @@ export async function deleteAccount(): Promise<void> {
   await supabase.auth.signOut()
 }
 
+// One-way UI flags (journey dismissed, first suggestion seen) persisted on the
+// profile so they survive reinstalls — localStorage is wiped with the app icon.
+// Best-effort: never let a flag write break the feature that set it.
+export async function setAppFlag(key: string): Promise<void> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data } = await supabase.from('profiles').select('app_flags').eq('id', user.id).single()
+    await supabase
+      .from('profiles')
+      .update({ app_flags: { ...(data?.app_flags || {}), [key]: true } })
+      .eq('id', user.id)
+  } catch { /* flag stays local-only */ }
+}
+
 export async function getProfile(): Promise<DbProfile | null> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
@@ -752,7 +768,7 @@ function generateId(): string {
   })
 }
 
-export function fileToBase64(file: File): Promise<string> {
+function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => {
@@ -760,6 +776,17 @@ export function fileToBase64(file: File): Promise<string> {
       resolve(result.split(',')[1])
     }
     reader.onerror = reject
-    reader.readAsDataURL(file)
+    reader.readAsDataURL(blob)
   })
+}
+
+// Downscale before sending to AI analysis: garment recognition needs ~1100px,
+// while a raw phone photo is 3-8 MB — most of the "matching your wardrobe"
+// wait was uploading megabytes of base64 over mobile data.
+export async function fileForAnalysis(file: File): Promise<{ base64: string; mediaType: string }> {
+  const blob = await compressImage(file, 1100, 0.8)
+  return {
+    base64: await blobToBase64(blob),
+    mediaType: blob === file ? file.type : 'image/jpeg',
+  }
 }
