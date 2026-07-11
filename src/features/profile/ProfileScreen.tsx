@@ -21,6 +21,15 @@ export function ProfileScreen() {
   const [editing, setEditing] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState('')
   const [avatarSaving, setAvatarSaving] = useState(false)
+  // Device diagnostics stay hidden from users; 5 quick taps on the name reveal
+  // them when debugging a phone-specific layout report
+  const [showDiag, setShowDiag] = useState(false)
+  const diagTaps = useRef<number[]>([])
+  const tapForDiag = () => {
+    const now = Date.now()
+    diagTaps.current = [...diagTaps.current.filter(t => now - t < 2500), now]
+    if (diagTaps.current.length >= 5) setShowDiag(true)
+  }
   const avatarRef = useRef<HTMLInputElement>(null)
 
   const [name, setName] = useState('')
@@ -177,7 +186,7 @@ export function ProfileScreen() {
                   : <Camera size={11} className="text-white" />}
               </span>
             </button>
-            <div className="min-w-0">
+            <div className="min-w-0" onClick={tapForDiag}>
               <h1 className="text-[22px] font-bold tracking-tight truncate">{name || 'Profile'}</h1>
               <div className="text-[12px] text-text-tertiary truncate">{user?.email}</div>
               {(gender || location) && (
@@ -427,7 +436,7 @@ export function ProfileScreen() {
             <span className="text-[14px] font-medium text-red-400">Delete account</span>
           </button>
 
-          <DiagFooter />
+          {showDiag && <DiagFooter />}
           <div className="h-8" />
         </div>
       </div>
