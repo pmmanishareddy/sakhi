@@ -10,10 +10,6 @@
   - The app self-updates: foregrounding triggers a SW update check and a `controllerchange` reload (main.tsx). Without both halves, installed iPhones stay on stale builds forever.
   - Profile tab diag footer (build stamp · inset · dvh/icb/root/screen) is the first thing to ask for on any device layout report.
 
-## Pending manual deploys (2026-07-11 field-test fixes)
-- [ ] Run `supabase/migrations/003_app_flags.sql` in the Supabase SQL editor (adds `profiles.app_flags` — journey/checklist flags survive reinstalls; code degrades gracefully until then)
-- [ ] Paste updated `supabase/functions-standalone/match-outfit-photo.ts` into the dashboard (footwear-subtype hard boundary: heels no longer match flats)
-
 ## TODO
 - [x] Profile/settings screen (`/profile`, 4th nav tab) — edit name, gender, home city, and all onboarding style preferences; log out; delete account
 - [x] Deleting a wardrobe item no longer deletes it from logged outfits — delete is now a soft delete (`status='archived'`); outfit history joins item data so archived pieces still render; AI features filter to active items
