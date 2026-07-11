@@ -7,13 +7,7 @@ import { toggleLaundryStatus, deleteWardrobeItem, updateWardrobeItem } from '../
 import { useAuth } from '../../lib/auth'
 
 const CATEGORY_OPTIONS = ['T-Shirt', 'Top', 'Shirt', 'Blouse', 'Saree Blouse', 'Crop Top', 'Saree', 'Dress', 'Jumpsuit', 'Pants', 'Jeans', 'Shorts', 'Skirt', 'Leggings', 'Jacket', 'Blazer', 'Sweater', 'Hoodie', 'Kurta', 'Dupatta', 'Jewelry', 'Shoes', 'Sandals', 'Heels', 'Sneakers', 'Bags', 'Sunglasses', 'Watch', 'Belt', 'Scarf', 'Hat']
-const COLOR_OPTIONS = [
-  { name: 'Red', hex: '#E53935' }, { name: 'Blue', hex: '#1565C0' }, { name: 'Green', hex: '#2E7D32' },
-  { name: 'Black', hex: '#333' }, { name: 'White', hex: '#F5F5F5' }, { name: 'Pink', hex: '#F06292' },
-  { name: 'Gold', hex: '#FFD54F' }, { name: 'Teal', hex: '#00897B' }, { name: 'Brown', hex: '#8D6E63' },
-  { name: 'Purple', hex: '#9B7EC8' }, { name: 'Orange', hex: '#FF9800' }, { name: 'Lime', hex: '#CDDC39' },
-  { name: 'Maroon', hex: '#880E4F' }, { name: 'Navy', hex: '#1A237E' }, { name: 'Mint', hex: '#A5D6A7' },
-]
+import { COLOR_OPTIONS } from '../../lib/colors'
 const PATTERN_OPTIONS = ['Solid', 'Printed', 'Woven', 'Embroidered', 'Striped', 'Checked', 'Floral', 'Lace', 'Abstract']
 const FORMALITY_OPTIONS = ['Casual', 'Smart Casual', 'Semi-Formal', 'Formal', 'Ethnic']
 const OCCASION_OPTIONS = ['Office', 'Casual', 'Weddings', 'Festivals', 'Date Night', 'Parties', 'Travel', 'Brunch']
@@ -113,13 +107,13 @@ export function ItemDetail() {
       {/* Stats */}
       <div className="flex mx-6 mt-3 mb-4 bg-card rounded-[14px] overflow-hidden">
         {[
-          { val: String(item.times_worn), label: 'Times Worn' },
-          { val: lastWorn, label: 'Last Worn' },
-          { val: cpw, label: 'Cost/Wear' },
+          { val: String(item.times_worn), label: 'Times worn' },
+          { val: lastWorn, label: 'Last worn' },
+          { val: cpw, label: 'Cost per wear' },
         ].map((s, i) => (
-          <div key={i} className="flex-1 flex flex-col items-center justify-center py-3.5 border-l border-white/[0.06] first:border-l-0">
-            <span className="text-[10px] text-text-tertiary uppercase tracking-wide block">{s.label}</span>
-            <span className="text-[17px] font-bold text-white block mt-1">{s.val}</span>
+          <div key={i} className="flex-1 min-w-0 flex flex-col items-center justify-center py-3.5 px-1 border-l border-white/[0.06] first:border-l-0">
+            <span className="text-[17px] font-bold text-white block">{s.val}</span>
+            <span className="text-[11px] text-text-tertiary block mt-1 whitespace-nowrap">{s.label}</span>
           </div>
         ))}
       </div>

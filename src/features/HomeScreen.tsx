@@ -72,33 +72,27 @@ export function HomeScreen() {
           </button>
         ) : (
           <button
-            onClick={() => navigate('/suggest')}
+            onClick={() => navigate('/log-outfit')}
             className="mx-6 mt-4 w-[calc(100%-48px)] flex items-center gap-4 p-5 rounded-2xl bg-accent-soft border-none cursor-pointer active:scale-[0.98] transition-transform text-left"
           >
             <div className="w-12 h-12 rounded-[14px] bg-accent flex items-center justify-center shrink-0">
-              <Wand2 size={22} className="text-white" />
+              <PenLine size={22} className="text-white" />
             </div>
             <div>
               <div className="flex items-center gap-1.5 text-[11px] font-semibold text-success mb-0.5">
                 <Check size={12} /> Today's outfit logged
               </div>
-              <div className="text-[16px] font-bold text-text-primary">Need a look for later?</div>
+              <div className="text-[16px] font-bold text-text-primary">Changing later? Log that too</div>
             </div>
           </button>
         )}
 
-        {/* Secondary actions */}
+        {/* Secondary actions — same two, logged or not; Suggest Outfit doesn't move around */}
         <div className="flex gap-2 px-6 pt-2.5">
-          {(loggedToday
-            ? [
-                { icon: <PenLine size={17} />, label: 'Log another', onClick: () => navigate('/log-outfit') },
-                { icon: <Camera size={17} />, label: 'Snap a piece', onClick: () => navigate('/add-item') },
-              ]
-            : [
-                { icon: <Wand2 size={17} />, label: 'Suggest Outfit', onClick: () => navigate('/suggest') },
-                { icon: <Camera size={17} />, label: 'Snap a piece', onClick: () => navigate('/add-item') },
-              ]
-          ).map((cta, i) => (
+          {[
+            { icon: <Wand2 size={17} />, label: 'Style me', onClick: () => navigate('/suggest') },
+            { icon: <Camera size={17} />, label: 'Snap a piece', onClick: () => navigate('/add-item') },
+          ].map((cta, i) => (
             <button
               key={i}
               onClick={cta.onClick}

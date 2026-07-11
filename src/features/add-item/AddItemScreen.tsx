@@ -8,12 +8,7 @@ import { analyzeItemPhoto, addWardrobeItem, fileForAnalysis } from '../../lib/ap
 import { pairsWith } from '../../lib/style-rules'
 
 const CATEGORY_OPTIONS = ['T-Shirt', 'Top', 'Shirt', 'Blouse', 'Saree Blouse', 'Crop Top', 'Saree', 'Dress', 'Jumpsuit', 'Pants', 'Jeans', 'Shorts', 'Skirt', 'Leggings', 'Jacket', 'Blazer', 'Sweater', 'Hoodie', 'Kurta', 'Dupatta', 'Jewelry', 'Shoes', 'Sandals', 'Heels', 'Sneakers', 'Bags', 'Sunglasses', 'Watch', 'Belt', 'Scarf', 'Hat']
-const COLOR_OPTIONS = [
-  { name: 'Red', hex: '#E53935' }, { name: 'Blue', hex: '#1565C0' }, { name: 'Green', hex: '#2E7D32' },
-  { name: 'Black', hex: '#333' }, { name: 'White', hex: '#F5F5F5' }, { name: 'Pink', hex: '#F06292' },
-  { name: 'Gold', hex: '#FFD54F' }, { name: 'Teal', hex: '#00897B' }, { name: 'Brown', hex: '#8D6E63' },
-  { name: 'Purple', hex: '#9B7EC8' }, { name: 'Orange', hex: '#FF9800' }, { name: 'Lime', hex: '#CDDC39' },
-]
+import { COLOR_OPTIONS } from '../../lib/colors'
 const PATTERN_OPTIONS = ['Solid', 'Printed', 'Woven', 'Embroidered', 'Striped', 'Checked', 'Floral']
 const FORMALITY_OPTIONS = ['Casual', 'Smart Casual', 'Semi-Formal', 'Formal', 'Ethnic']
 const OCCASION_OPTIONS = ['Office', 'Casual', 'Wedding', 'Festival', 'Date Night', 'Party', 'Travel', 'Brunch']
