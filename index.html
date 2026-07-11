@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <script>
+      // iOS standalone bug: the layout viewport comes up short by exactly the
+      // status-bar height (e.g. 812 on an 874pt screen), leaving a dead band
+      // under the bottom nav. height=device-height restores the full-screen
+      // viewport; navigator.standalone gates it to installed iOS apps only.
+      if (navigator.standalone) {
+        document.querySelector('meta[name=viewport]').setAttribute('content',
+          'width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover')
+      }
+    </script>
     <meta name="theme-color" content="#121212" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
