@@ -4,6 +4,11 @@
 - GitHub: https://github.com/pmmanishareddy/sakhi (private). Sample data (`public/outfits/`, `sampleData.ts`) and `.env` are gitignored — local only.
 - Netlify: https://sakhi-550.netlify.app — auto-deploys on push to main via GitHub Actions (`.github/workflows/deploy.yml`; Netlify's own repo linking never worked). Manual fallback: `npx netlify deploy --build --prod`.
 - All 6 edge functions live and verified (2026-07-09 post-audit paste round: full live suite + 15/15 perf-eval calls pass). Storage bucket private, signed URLs. Latency/cost baseline: `PERFORMANCE_COST_METRICS_2026-07-09.md`.
+- iOS install verified on iPhone 16 Pro (2026-07-11) after a day of layout debugging. Gotchas that must not regress:
+  - Status bar is opaque `black` on purpose — `black-translucent` triggers an iOS viewport bug (layout viewport 62px shorter than the screen → dead band under the nav; `height=device-height` is ignored). iOS bakes this meta into the icon at Add-to-Home-Screen, so changing it needs a delete + re-add.
+  - `.app-shell` must stay in normal flow (not absolute) or `#root`'s safe-area padding is silently bypassed.
+  - The app self-updates: foregrounding triggers a SW update check and a `controllerchange` reload (main.tsx). Without both halves, installed iPhones stay on stale builds forever.
+  - Profile tab diag footer (build stamp · inset · dvh/icb/root/screen) is the first thing to ask for on any device layout report.
 
 ## TODO
 - [x] Profile/settings screen (`/profile`, 4th nav tab) — edit name, gender, home city, and all onboarding style preferences; log out; delete account
