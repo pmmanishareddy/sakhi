@@ -4,7 +4,7 @@ import { ArrowLeft, Camera, Image, LayoutGrid, Check, X, Plus, Calendar, Sparkle
 import { Toast } from '../../components/Toast'
 import { useWardrobe } from '../../lib/wardrobe-store'
 import { useAuth } from '../../lib/auth'
-import { matchOutfitPhoto, logOutfit as logOutfitApi, fileForAnalysis, uploadImage, updateOutfit, fetchCircles, addWardrobeItem, addItemsToOutfit, type MatchResult, type DbSocialCircle } from '../../lib/api'
+import { matchOutfitPhoto, logOutfit as logOutfitApi, fileForAnalysis, uploadImage, fetchCircles, addWardrobeItem, addItemsToOutfit, type MatchResult, type DbSocialCircle } from '../../lib/api'
 
 const OCCASIONS = ['Office', 'Casual', 'Party', 'Wedding', 'Date', 'Brunch', 'Festival']
 const DEFAULT_CIRCLES = ['Work team', 'College friends', 'Family', 'Partner']
@@ -130,6 +130,7 @@ export function LogOutfitFlow() {
   const { items, refresh } = useWardrobe()
   const fileRef = useRef<HTMLInputElement>(null)
   const galleryRef = useRef<HTMLInputElement>(null)
+  const uploadRef = useRef<Promise<string> | null>(null)
   const preselectedId = searchParams.get('itemId')
   const [step, setStep] = useState(preselectedId ? 4 : 0)
   const [selfieFile, setSelfieFile] = useState<File | null>(null)
@@ -226,6 +227,14 @@ export function LogOutfitFlow() {
     setSelfiePreview(URL.createObjectURL(file))
     setStep(2)
 
+    if (user) {
+      // Start uploading now, alongside the AI match — it's usually done by
+      // the time the outfit is saved, so awaiting it there costs nothing
+      const upload = uploadImage(file, 'outfits')
+      upload.catch(() => {}) // handled at save time; retried there
+      uploadRef.current = upload
+    }
+
     try {
       if (user) {
         const { base64, mediaType } = await fileForAnalysis(file)
@@ -271,21 +280,32 @@ export function LogOutfitFlow() {
           ? getMatchedDisplay().filter(m => !m.isNew && !removedItems.has(m.id)).map(m => m.id)
           : Array.from(selectedItems)
 
-        // Save the outfit row first (fast), let the photo upload finish in
-        // the background and attach itself when done
+        // The photo must be on the outfit row before we leave this screen —
+        // a background upload dies if the app closes or the PWA reloads on
+        // foreground, leaving the outfit stuck on a wardrobe-item fallback.
+        // The upload started when the photo was taken, so this rarely waits.
+        let imageUrl: string | undefined
+        if (selfieFile) {
+          try {
+            imageUrl = await (uploadRef.current ?? uploadImage(selfieFile, 'outfits'))
+          } catch {
+            try {
+              imageUrl = await uploadImage(selfieFile, 'outfits')
+            } catch (err) {
+              console.error('Outfit photo upload failed:', err)
+            }
+          }
+        }
+
         const outfit = await logOutfitApi({
           occasion,
           itemIds,
           socialCircles: Array.from(socialCircles),
           eventName: eventName || undefined,
+          imageUrl,
           source: selfieFile ? 'photo' : 'manual',
         })
         setLastOutfitId(outfit.id)
-        if (selfieFile) {
-          uploadImage(selfieFile, 'outfits')
-            .then(url => updateOutfit(outfit.id, { image_url: url }))
-            .catch(err => console.error('Outfit photo upload failed:', err))
-        }
       }
     } catch { /* toast anyway */ }
     setSaving(false)
