@@ -34,6 +34,7 @@ export function AddItemScreen() {
   const [analysisStep, setAnalysisStep] = useState(0)
   const [toast, setToast] = useState('')
   const [saving, setSaving] = useState(false)
+  const [multiGarment, setMultiGarment] = useState(false)
 
   const [itemName, setItemName] = useState('')
   const [category, setCategory] = useState('')
@@ -180,6 +181,7 @@ export function AddItemScreen() {
         setAiDescription(analysis.description || '')
         setSeasons(analysis.seasons || [])
         setStyleTags(analysis.style_tags || [])
+        setMultiGarment(!!analysis.multi_garment)
         setStep(3)
         return
       }
@@ -269,6 +271,7 @@ export function AddItemScreen() {
     setStyleTags([])
     setEditingField(null)
     setSaving(false)
+    setMultiGarment(false)
     setBatchMode(false)
     setBatchFiles([])
     setBatchPreviews([])
@@ -414,6 +417,30 @@ export function AddItemScreen() {
                 <p className="text-[11px] text-text-tertiary">Tap any field to edit</p>
               </div>
             </div>
+
+            {/* Full-outfit nudge — Add to wardrobe captures one piece; a worn
+                look belongs in Log Outfit, which grabs every piece */}
+            {multiGarment && (
+              <div className="mb-5 p-4 bg-accent-soft rounded-[16px]">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-[12px] bg-accent flex items-center justify-center shrink-0">
+                    <Images size={18} className="text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-semibold text-accent mb-0.5">Looks like a full outfit</div>
+                    <div className="text-[12px] text-text-secondary leading-relaxed mb-3">
+                      Adding here saves just one piece. Log it as an outfit and Sakhi captures every piece you're wearing.
+                    </div>
+                    <button
+                      onClick={() => navigate('/log-outfit', { state: { prefillOutfitPhoto: imageFile } })}
+                      className="px-4 py-2.5 rounded-xl text-[13px] font-semibold bg-accent text-white border-none cursor-pointer active:scale-[0.97] transition-transform"
+                    >
+                      Log as outfit instead
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Photo + Name */}
             <div className="flex gap-4 mb-5">

@@ -108,6 +108,9 @@ export interface AnalysisResult {
   fabric: string | null
   brand: string | null
   description: string
+  // True when the photo shows a full worn outfit (2+ garments) — used to nudge
+  // the user toward Log Outfit, which captures every piece instead of just one
+  multi_garment?: boolean
 }
 
 export interface OutfitSuggestion {

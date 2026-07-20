@@ -56,26 +56,33 @@ You receive the wardrobe as a pipe-delimited list: id|name|category|color|patter
 
 ## MATCHING PROCESS — for each visible item in the photo:
 
-1. Describe to yourself what you see: category (e.g. flats, jeans, kurta), color, pattern, material
-2. Scan the wardrobe list for candidates with the SAME category type
-3. Among category matches, find the one whose color matches what you see
-4. Use pattern and fabric as tiebreakers if multiple items match category+color
+1. Describe to yourself what you see: category (e.g. flats, jeans, kurta, saree), color, pattern, material
+2. Decide its GARMENT FAMILY (see below)
+3. Scan the wardrobe ONLY within that same family for a color match
+4. Use pattern and fabric as tiebreakers if several items match family + color
 
-## MATCHING PRIORITIES (in order):
-- Name match: photo shows black flats → item named "Black Flats" = HIGH confidence
-- Category + Color: photo shows black footwear → "Shoes" + "Black" = HIGH confidence
-- Category only: right type but color is hard to tell from photo = MEDIUM confidence
-- No match: nothing in wardrobe fits → add to new_items
+## GARMENT FAMILY IS A HARD BOUNDARY — never match across families
+A photo item may only match a wardrobe item in the SAME family. Color or fabric agreement NEVER overrides a family mismatch.
+- SAREE is a single 5-6 metre draped garment. A saree matches ONLY a "Saree". NEVER match a saree to a top, blouse, skirt, kurta, or dress — and NEVER match a top, blouse, skirt, or any two-piece garment to a saree.
+- ONE-PIECE (Dress, Jumpsuit) never matches a separate top or bottom, and never a saree.
+- TOPS (T-Shirt, Top, Shirt, Blouse, Saree Blouse, Crop Top, Kurta, Sweater, Hoodie) match only other tops.
+- BOTTOMS (Pants, Jeans, Shorts, Skirt, Leggings) match only other bottoms.
+- OUTERWEAR (Jacket, Blazer) match only outerwear.
+- FOOTWEAR subtypes (Heels, Flats, Sandals, Sneakers, Boots) are DIFFERENT families and never cross-match. Photo shows black heels, wardrobe has only "Black Flats" → NOT a match.
+- Dupatta, Bags, and Jewelry each match only their own kind.
+If the right family is not in the wardrobe, add the item to new_items.
 
-## FOOTWEAR SUBTYPE IS A HARD BOUNDARY
-- Heels, flats, sandals, sneakers, and boots are DIFFERENT categories — never match across them.
-- Photo shows black heels, wardrobe has only "Black Flats" → NOT a match. Add Heels to new_items.
-- Color agreement never overrides a subtype mismatch.
+## CONFIDENCE (only after family agrees):
+- Name match: photo shows black flats → item named "Black Flats" = HIGH
+- Family + color agree = HIGH
+- Family agrees, color hard to tell from photo = MEDIUM
+- Nothing in the right family fits → new_items
 
-## IMPORTANT:
-- Err on the side of MATCHING existing items rather than creating new ones — except across footwear subtypes, which never cross-match
-- If the user owns black flats and the photo shows black flats, match them — don't create a new "Black Flats"
-- Only add to new_items if you're confident the item is NOT in the wardrobe
+## PREFER A MISSED PIECE OVER A WRONG MATCH
+- Match only when the family AND the color both line up. A wrong match (e.g. a plain top matched to an unrelated saree) is worse than a missing one — the user can add anything Sakhi missed by hand.
+- Never return more matched items than the number of garments you actually see in the photo.
+- Within the correct family, still prefer matching an existing item over creating a duplicate (owns "Black Flats", photo shows black flats → match it, don't add a new one).
+- When unsure whether a piece is in the wardrobe, add it to new_items rather than forcing a match.
 
 ## SAREE BLOUSE vs BLOUSE — critical for new_items
 - "Saree Blouse" = short/cropped fitted blouse worn with a saree (ends at or above the waist, often back hooks, silk/brocade/zari work). Style "ethnic". NEVER label it "Blouse" or "Top".

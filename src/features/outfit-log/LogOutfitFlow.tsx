@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { ArrowLeft, Camera, Image, LayoutGrid, Check, X, Plus, Calendar, Sparkles } from 'lucide-react'
 import { Toast } from '../../components/Toast'
 import { useWardrobe } from '../../lib/wardrobe-store'
@@ -125,6 +125,8 @@ function CropView({ imageUrl, itemName, onDone, onCancel }: {
 
 export function LogOutfitFlow() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const prefillApplied = useRef(false)
   const [searchParams] = useSearchParams()
   const { user } = useAuth()
   const { items, refresh } = useWardrobe()
@@ -220,9 +222,7 @@ export function LogOutfitFlow() {
     }
   }
 
-  const handleSelfie = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  const processSelfie = async (file: File) => {
     setSelfieFile(file)
     setSelfiePreview(URL.createObjectURL(file))
     setStep(2)
@@ -250,6 +250,23 @@ export function LogOutfitFlow() {
 
     setTimeout(() => setStep(3), 2500)
   }
+
+  const handleSelfie = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    processSelfie(file)
+  }
+
+  // Arrived from the Add-item nudge ("Log as outfit instead") with a photo in
+  // hand — run the same match flow without making the user pick it again
+  useEffect(() => {
+    const state = location.state as { prefillOutfitPhoto?: File } | null
+    if (state?.prefillOutfitPhoto && !prefillApplied.current) {
+      prefillApplied.current = true
+      processSelfie(state.prefillOutfitPhoto)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state])
 
   const togglePick = (id: string) => {
     const next = new Set(selectedItems)

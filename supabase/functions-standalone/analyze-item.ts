@@ -48,7 +48,7 @@ function parseJson(text: string) {
 const SYSTEM_PROMPT = `Analyze the clothing item in this image.
 
 If the image does NOT clearly show a clothing item, footwear, bag, or fashion accessory, return exactly {"error": "not_clothing"} — never invent a garment.
-If multiple garments are visible, analyze the single most prominent one.
+If the image shows a person WEARING a full outfit (two or more distinct garments on the body, e.g. a top and a bottom), analyze the single most prominent garment AND set "multi_garment": true. For a single garment — worn alone, on a hanger, or laid flat — set "multi_garment": false.
 Describe only the garments — never the person wearing them, their body, or their appearance.
 
 Return ONLY a JSON object:
@@ -66,7 +66,8 @@ Return ONLY a JSON object:
   "style_tags": ["FIRST tag MUST be exactly one of: western, ethnic, versatile — then others e.g. minimalist, boho, classic"],
   "fabric": "detected fabric type",
   "brand": "if visible, else null",
-  "description": "one sentence style description"
+  "description": "one sentence style description",
+  "multi_garment": true only if the photo shows a person wearing a full outfit of 2+ distinct garments, else false
 }
 
 CRITICAL — Saree Blouse vs Blouse:
