@@ -143,6 +143,7 @@ export function LogOutfitFlow() {
   const [eventName, setEventName] = useState('')
   const [toast, setToast] = useState('')
   const [matchedResults, setMatchedResults] = useState<MatchResult | null>(null)
+  const [matchError, setMatchError] = useState('')
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set())
   const [showAddPicker, setShowAddPicker] = useState(false)
   const [dbCircles, setDbCircles] = useState<DbSocialCircle[]>([])
@@ -166,7 +167,10 @@ export function LogOutfitFlow() {
   ]
 
   const getMatchedDisplay = () => {
-    let base = demoMatched
+    // demoMatched is for the signed-out marketing demo ONLY. A logged-in user
+    // whose match failed must never see other wardrobe items (items 0/2/7)
+    // presented as if the AI picked them — show nothing and surface the error.
+    let base = user ? [] : demoMatched
     if (matchedResults) {
       const matched = matchedResults.matched_items.map(m => ({
         ...m,
@@ -225,6 +229,7 @@ export function LogOutfitFlow() {
   const processSelfie = async (file: File) => {
     setSelfieFile(file)
     setSelfiePreview(URL.createObjectURL(file))
+    setMatchError('')
     setStep(2)
 
     if (user) {
@@ -245,7 +250,9 @@ export function LogOutfitFlow() {
         return
       }
     } catch (err) {
+      // Surface the real reason instead of silently falling back to demo data
       console.error('Match outfit failed:', err)
+      setMatchError(err instanceof Error ? err.message : 'Could not read that photo. Try again.')
     }
 
     setTimeout(() => setStep(3), 2500)
@@ -435,6 +442,15 @@ export function LogOutfitFlow() {
             {selfiePreview && (
               <div className="mx-7 rounded-[18px] overflow-hidden aspect-[3/4] max-h-[220px] mb-5">
                 <img src={selfiePreview} alt="" className="w-full h-full object-cover" />
+              </div>
+            )}
+
+            {/* Matching failed — say so plainly instead of showing placeholders */}
+            {matchError && (
+              <div className="mx-7 mb-4 p-3 rounded-[14px] bg-danger/[0.08] border border-danger/20">
+                <div className="text-[13px] font-semibold text-danger mb-0.5">Couldn't read your photo</div>
+                <div className="text-[11px] text-text-tertiary leading-relaxed break-words">{matchError}</div>
+                <div className="text-[11px] text-text-secondary mt-1.5">Add pieces from your wardrobe below, or go back and retry.</div>
               </div>
             )}
 
