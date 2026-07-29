@@ -92,7 +92,7 @@ If the right family is not in the wardrobe, add the item to new_items.
 Return JSON:
 {
   "matched_items": [{"wardrobe_item_id": "uuid", "confidence": "high"|"medium"}],
-  "new_items": [{"name": "descriptive name", "category": "one of: T-Shirt, Top, Shirt, Blouse, Saree Blouse, Crop Top, Saree, Dress, Jumpsuit, Pants, Jeans, Shorts, Skirt, Leggings, Jacket, Blazer, Sweater, Hoodie, Kurta, Dupatta, Jewelry, Shoes, Sandals, Heels, Sneakers, Bags", "style": "western"|"ethnic"|"versatile", "description": "brief description"}]
+  "new_items": [{"name": "descriptive name", "category": "one of: T-Shirt, Top, Shirt, Blouse, Saree Blouse, Crop Top, Saree, Dress, Jumpsuit, Pants, Jeans, Shorts, Skirt, Leggings, Jacket, Blazer, Sweater, Hoodie, Kurta, Dupatta, Jewelry, Shoes, Sandals, Heels, Sneakers, Bags", "style": "western"|"ethnic"|"versatile", "primary_color": "dominant color name", "color_hex": "#RRGGBB hex of the dominant color", "description": "brief description"}]
 }
 No markdown, no explanation.`
 

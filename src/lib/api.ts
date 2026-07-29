@@ -161,7 +161,7 @@ export interface ShopOption {
 
 export interface MatchResult {
   matched_items: Array<{ id: string; name: string; image_url: string; confidence: string }>
-  new_items: Array<{ name: string; category: string; style?: 'western' | 'ethnic' | 'versatile'; description: string }>
+  new_items: Array<{ name: string; category: string; style?: 'western' | 'ethnic' | 'versatile'; primary_color?: string; color_hex?: string; description: string }>
 }
 
 // ── Wardrobe Items ──

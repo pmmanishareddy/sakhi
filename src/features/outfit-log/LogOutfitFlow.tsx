@@ -155,7 +155,7 @@ export function LogOutfitFlow() {
   const [removedItems, setRemovedItems] = useState<Set<string>>(new Set())
   const [rejectedMatches, setRejectedMatches] = useState<Array<{ id: string; name: string; category: string; description?: string }>>([])
   const [lastOutfitId, setLastOutfitId] = useState<string | null>(null)
-  const [cropTarget, setCropTarget] = useState<null | { type: 'new'; croppedId: string; name: string; category: string; style?: string; description?: string }>(null)
+  const [cropTarget, setCropTarget] = useState<null | { type: 'new'; croppedId: string; name: string; category: string; style?: string; primary_color?: string; color_hex?: string; description?: string }>(null)
   const [croppedIds, setCroppedIds] = useState<Set<string>>(new Set())
   const [saving, setSaving] = useState(false)
 
@@ -673,7 +673,7 @@ export function LogOutfitFlow() {
                         <X size={14} className="text-text-tertiary" />
                       </button>
                       <button
-                        onClick={() => { setCropTarget({ type: 'new', croppedId: `new-${i}`, name: item.name, category: item.category, style: item.style, description: item.description }); setStep(7) }}
+                        onClick={() => { setCropTarget({ type: 'new', croppedId: `new-${i}`, name: item.name, category: item.category, style: item.style, primary_color: item.primary_color, color_hex: item.color_hex, description: item.description }); setStep(7) }}
                         className="px-3.5 py-2 rounded-xl text-[12px] font-semibold bg-accent text-white border-none cursor-pointer"
                       >
                         Crop & Add
@@ -744,12 +744,14 @@ export function LogOutfitFlow() {
                 name: cropTarget.name,
                 category: cropTarget.category,
                 subcategory: null,
-                primary_color: 'Unknown',
-                color_hex: '#888888',
+                primary_color: cropTarget.primary_color || 'Unknown',
+                color_hex: cropTarget.color_hex || '#888888',
                 secondary_color: null,
                 pattern: 'Solid',
                 formality: 'Casual',
-                occasions: ['Casual'],
+                // Tag with the occasion the outfit was logged for (mapped to the
+                // wardrobe's occasion vocabulary), not a hard-coded 'Casual'
+                occasions: occasion ? [occasion === 'Date' ? 'Date Night' : occasion] : [],
                 seasons: ['All'],
                 style_tags: cropTarget.style ? [cropTarget.style] : [],
                 brand: null,
