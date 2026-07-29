@@ -492,6 +492,8 @@ export async function logOutfit(input: {
   eventName?: string
   imageUrl?: string
   source?: 'manual' | 'suggestion' | 'photo'
+  // Day the outfit was worn (YYYY-MM-DD). Omitted → DB default CURRENT_DATE.
+  date?: string
 }): Promise<DbOutfit> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
@@ -501,6 +503,7 @@ export async function logOutfit(input: {
     .insert({
       user_id: user.id,
       occasion: input.occasion,
+      ...(input.date ? { date: input.date } : {}),
       social_circles: input.socialCircles ?? [],
       event_name: input.eventName ?? null,
       image_url: input.imageUrl ? canonicalImageUrl(input.imageUrl) : null,

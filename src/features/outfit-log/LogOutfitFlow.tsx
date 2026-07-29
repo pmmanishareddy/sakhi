@@ -9,6 +9,9 @@ import { matchOutfitPhoto, logOutfit as logOutfitApi, fileForAnalysis, uploadIma
 const OCCASIONS = ['Office', 'Casual', 'Party', 'Wedding', 'Date', 'Brunch', 'Festival']
 const DEFAULT_CIRCLES = ['Work team', 'College friends', 'Family', 'Partner']
 
+// Local calendar date as YYYY-MM-DD (en-CA), matching HomeScreen's date grouping
+const localDate = (d = new Date()) => d.toLocaleDateString('en-CA')
+
 function CropView({ imageUrl, itemName, onDone, onCancel }: {
   imageUrl: string; itemName: string; onDone: (file: File) => void; onCancel: () => void
 }) {
@@ -141,6 +144,8 @@ export function LogOutfitFlow() {
   const [occasion, setOccasion] = useState('')
   const [socialCircles, setSocialCircles] = useState<Set<string>>(new Set())
   const [eventName, setEventName] = useState('')
+  const today = localDate()
+  const [wornDate, setWornDate] = useState(today)
   const [toast, setToast] = useState('')
   const [matchedResults, setMatchedResults] = useState<MatchResult | null>(null)
   const [matchError, setMatchError] = useState('')
@@ -328,6 +333,7 @@ export function LogOutfitFlow() {
           eventName: eventName || undefined,
           imageUrl,
           source: selfieFile ? 'photo' : 'manual',
+          date: wornDate,
         })
         setLastOutfitId(outfit.id)
       }
@@ -513,6 +519,9 @@ export function LogOutfitFlow() {
               eventName={eventName}
               setEventName={setEventName}
               circleNames={dbCircles.length > 0 ? dbCircles.map(c => c.name) : DEFAULT_CIRCLES}
+              wornDate={wornDate}
+              setWornDate={setWornDate}
+              today={today}
             />
 
             <div className="px-7 mt-6">
@@ -610,6 +619,9 @@ export function LogOutfitFlow() {
               eventName={eventName}
               setEventName={setEventName}
               circleNames={dbCircles.length > 0 ? dbCircles.map(c => c.name) : DEFAULT_CIRCLES}
+              wornDate={wornDate}
+              setWornDate={setWornDate}
+              today={today}
             />
 
             <div className="px-7 mt-6">
@@ -823,7 +835,7 @@ export function LogOutfitFlow() {
   )
 }
 
-function ContextFields({ occasion, setOccasion, socialCircles, toggleSocial, eventName, setEventName, circleNames }: {
+function ContextFields({ occasion, setOccasion, socialCircles, toggleSocial, eventName, setEventName, circleNames, wornDate, setWornDate, today }: {
   occasion: string
   setOccasion: (v: string) => void
   socialCircles: Set<string>
@@ -831,9 +843,44 @@ function ContextFields({ occasion, setOccasion, socialCircles, toggleSocial, eve
   eventName: string
   setEventName: (v: string) => void
   circleNames: string[]
+  wornDate: string
+  setWornDate: (v: string) => void
+  today: string
 }) {
+  const yesterday = localDate(new Date(Date.now() - 86_400_000))
+  const minDate = localDate(new Date(Date.now() - 60 * 86_400_000)) // 60-day lookback
+  const isOther = wornDate !== today && wornDate !== yesterday
+  const otherLabel = isOther
+    ? new Date(wornDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    : 'Another day'
+  const dayChip = (active: boolean) =>
+    `px-3.5 py-2 rounded-xl text-[12px] font-medium border-none cursor-pointer transition-colors ${
+      active ? 'bg-accent text-white' : 'bg-card text-text-secondary'
+    }`
   return (
     <>
+      {/* When did you wear this — defaults to Today, tap to back-date */}
+      <div className="px-7 mb-2">
+        <span className="text-[12px] font-semibold text-text-tertiary uppercase tracking-wide">When did you wear this</span>
+      </div>
+      <div className="flex items-center gap-2 px-7 mb-5">
+        <button onClick={() => setWornDate(today)} className={dayChip(wornDate === today)}>Today</button>
+        <button onClick={() => setWornDate(yesterday)} className={dayChip(wornDate === yesterday)}>Yesterday</button>
+        <label className={`relative inline-flex items-center gap-1.5 ${dayChip(isOther)}`}>
+          <Calendar size={13} />
+          {otherLabel}
+          <input
+            type="date"
+            value={wornDate}
+            min={minDate}
+            max={today}
+            onChange={e => { if (e.target.value) setWornDate(e.target.value) }}
+            className="absolute inset-0 opacity-0 cursor-pointer"
+            aria-label="Pick a date"
+          />
+        </label>
+      </div>
+
       {/* Occasion */}
       <div className="px-7 mb-2">
         <span className="text-[12px] font-semibold text-text-tertiary uppercase tracking-wide">Occasion <span className="text-danger">*</span></span>
