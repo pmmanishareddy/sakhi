@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Filter, Plus, Droplets, Search } from 'lucide-react'
+import { Filter, Plus, Droplets, Search, Wallet, X } from 'lucide-react'
 import { BottomNav } from '../../components/BottomNav'
 import { Toast } from '../../components/Toast'
 import { useWardrobe } from '../../lib/wardrobe-store'
@@ -52,7 +52,15 @@ export function WardrobeScreen() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('all')
   const [toast, setToast] = useState('')
+  const [showValue, setShowValue] = useState(false)
   const { items } = useWardrobe()
+
+  // Wardrobe value is on-demand only. Prices are optional, so a bare total would
+  // undercount — always show it against how many items actually carry a price.
+  const priced = items.filter(i => typeof i.price === 'number' && i.price > 0)
+  const totalValue = priced.reduce((sum, i) => sum + (i.price || 0), 0)
+  const unpriced = items.length - priced.length
+  const fmtINR = (n: number) => '₹' + new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(n)
 
   const filtered = activeTab === 'all' ? items : items.filter(i => groupOf(i.category) === activeTab)
   const laundryCount = items.filter(i => i.laundry_status === 'in_laundry').length
@@ -68,7 +76,16 @@ export function WardrobeScreen() {
         {/* Header */}
         <div className="flex justify-between items-center px-6 pt-3 pb-1">
           <h1 className="text-[22px] font-bold tracking-tight">Wardrobe</h1>
-          <Filter size={20} className="text-text-secondary cursor-pointer" />
+          <div className="flex items-center gap-3.5">
+            <button
+              onClick={() => setShowValue(true)}
+              aria-label="Wardrobe value"
+              className="bg-transparent border-none cursor-pointer p-0 flex items-center"
+            >
+              <Wallet size={20} className="text-text-secondary" />
+            </button>
+            <Filter size={20} className="text-text-secondary cursor-pointer" />
+          </div>
         </div>
 
         {/* Stats */}
@@ -174,6 +191,46 @@ export function WardrobeScreen() {
       >
         <Plus size={24} className="text-white" />
       </button>
+
+      {/* Wardrobe value — on-demand bottom sheet */}
+      {showValue && (
+        <div className="fixed inset-0 z-[100] flex items-end" onClick={() => setShowValue(false)}>
+          <div className="absolute inset-0 bg-black/50" />
+          <div
+            className="relative w-full bg-bg rounded-t-[24px] px-6 pt-6 animate-fade-up"
+            style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-[12px] bg-accent-soft flex items-center justify-center">
+                  <Wallet size={18} className="text-accent" />
+                </div>
+                <span className="text-[15px] font-bold text-text-primary">Wardrobe worth</span>
+              </div>
+              <button
+                onClick={() => setShowValue(false)}
+                className="w-8 h-8 rounded-full bg-card flex items-center justify-center border-none cursor-pointer"
+              >
+                <X size={16} className="text-text-tertiary" />
+              </button>
+            </div>
+
+            <div className="text-[34px] font-bold tracking-tight text-text-primary">{fmtINR(totalValue)}</div>
+            <div className="text-[13px] text-text-tertiary mt-1">
+              {priced.length === 0
+                ? 'None of your items have a price yet'
+                : `across ${priced.length} of ${items.length} item${items.length !== 1 ? 's' : ''} with a price`}
+            </div>
+
+            {unpriced > 0 && (
+              <div className="mt-5 p-3.5 rounded-[14px] bg-card text-[12px] text-text-secondary leading-relaxed">
+                {unpriced} item{unpriced !== 1 ? 's' : ''} {unpriced !== 1 ? 'have' : 'has'} no price yet. Add prices in item details for a fuller total.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <BottomNav />
       <Toast message={toast} visible={!!toast} onHide={() => setToast('')} />
