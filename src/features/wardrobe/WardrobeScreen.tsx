@@ -5,15 +5,48 @@ import { BottomNav } from '../../components/BottomNav'
 import { Toast } from '../../components/Toast'
 import { useWardrobe } from '../../lib/wardrobe-store'
 
-const TABS = [
-  { label: 'All', cat: 'all' },
-  { label: 'Sarees', cat: 'Saree' },
-  { label: 'Dresses', cat: 'Dress' },
-  { label: 'Tops', cat: 'Tops' },
-  { label: 'Bags', cat: 'Bags' },
-  { label: 'Outerwear', cat: 'Outerwear' },
-  { label: 'Accessories', cat: 'Accessories' },
+// Display groups. Each item's category is mapped into exactly one group so a
+// tab shows every item that belongs there — regardless of casing, stray spaces,
+// or a subcategory that leaked into the category (e.g. "Silk Saree"). Tops
+// (western) and ethnic Blouses are deliberately separate groups.
+const GROUPS: { label: string; cats: string[] }[] = [
+  { label: 'Sarees', cats: ['Saree'] },
+  { label: 'Blouses', cats: ['Saree Blouse'] },
+  { label: 'Tops', cats: ['Top', 'T-Shirt', 'Shirt', 'Blouse', 'Crop Top'] },
+  { label: 'Dresses', cats: ['Dress', 'Jumpsuit'] },
+  { label: 'Bottoms', cats: ['Pants', 'Jeans', 'Shorts', 'Skirt', 'Leggings'] },
+  { label: 'Ethnic', cats: ['Kurta', 'Dupatta'] },
+  { label: 'Outerwear', cats: ['Jacket', 'Blazer', 'Sweater', 'Hoodie'] },
+  { label: 'Footwear', cats: ['Shoes', 'Sandals', 'Heels', 'Sneakers'] },
+  { label: 'Bags', cats: ['Bags'] },
+  { label: 'Accessories', cats: ['Jewelry', 'Sunglasses', 'Watch', 'Belt', 'Scarf', 'Hat'] },
 ]
+
+const norm = (s: string) => (s || '').trim().toLowerCase()
+
+const CAT_TO_GROUP = new Map<string, string>()
+for (const g of GROUPS) for (const c of g.cats) CAT_TO_GROUP.set(norm(c), g.label)
+
+// Map a raw category to its group. Exact (normalized) first, then a substring
+// fallback so mis-formatted or subcategory-style values still land somewhere
+// sensible instead of vanishing from every tab.
+function groupOf(category: string): string {
+  const n = norm(category)
+  const direct = CAT_TO_GROUP.get(n)
+  if (direct) return direct
+  if (n.includes('saree blouse') || (n.includes('blouse') && n.includes('saree'))) return 'Blouses'
+  if (n.includes('saree')) return 'Sarees'
+  if (n.includes('dress') || n.includes('gown') || n.includes('jumpsuit')) return 'Dresses'
+  if (n.includes('kurt') || n.includes('dupatta') || n.includes('lehenga') || n.includes('anarkali') || n.includes('salwar')) return 'Ethnic'
+  if (n.includes('blouse') || n.includes('shirt') || n.includes('top')) return 'Tops'
+  if (n.includes('jean') || n.includes('pant') || n.includes('trouser') || n.includes('skirt') || n.includes('short') || n.includes('legging')) return 'Bottoms'
+  if (n.includes('jacket') || n.includes('blazer') || n.includes('sweater') || n.includes('hoodie') || n.includes('coat')) return 'Outerwear'
+  if (n.includes('shoe') || n.includes('sandal') || n.includes('heel') || n.includes('sneaker') || n.includes('boot') || n.includes('flat')) return 'Footwear'
+  if (n.includes('bag') || n.includes('clutch') || n.includes('purse')) return 'Bags'
+  return 'Accessories'
+}
+
+const TABS = [{ label: 'All', cat: 'all' }, ...GROUPS.map(g => ({ label: g.label, cat: g.label }))]
 
 export function WardrobeScreen() {
   const navigate = useNavigate()
@@ -21,12 +54,12 @@ export function WardrobeScreen() {
   const [toast, setToast] = useState('')
   const { items } = useWardrobe()
 
-  const filtered = activeTab === 'all' ? items : items.filter(i => i.category === activeTab)
+  const filtered = activeTab === 'all' ? items : items.filter(i => groupOf(i.category) === activeTab)
   const laundryCount = items.filter(i => i.laundry_status === 'in_laundry').length
 
   const getTabCount = useCallback((cat: string) => {
     if (cat === 'all') return items.length
-    return items.filter(i => i.category === cat).length
+    return items.filter(i => groupOf(i.category) === cat).length
   }, [items])
 
   return (
