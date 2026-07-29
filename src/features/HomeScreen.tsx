@@ -82,7 +82,7 @@ export function HomeScreen() {
               <div className="flex items-center gap-1.5 text-[11px] font-semibold text-success mb-0.5">
                 <Check size={12} /> Today's outfit logged
               </div>
-              <div className="text-[16px] font-bold text-text-primary">Changing later? Log that too</div>
+              <div className="text-[16px] font-bold text-text-primary">Log another outfit</div>
             </div>
           </button>
         )}
