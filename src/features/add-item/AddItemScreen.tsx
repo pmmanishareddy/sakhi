@@ -565,10 +565,10 @@ export function AddItemScreen() {
               </div>
             </TagField>
 
-            {/* Brand & Price — optional, editable at add time */}
-            <div className="flex gap-2.5 mt-1 mb-1">
-              <div className="flex-1 flex items-center gap-2 bg-card rounded-[14px] px-4 py-3">
-                <span className="text-[13px] text-text-tertiary shrink-0">Brand</span>
+            {/* Brand & Price — optional, editable at add time (stacked to avoid overflow) */}
+            <div className="flex flex-col gap-2.5 mt-1 mb-1">
+              <div className="flex items-center gap-3 bg-card rounded-[14px] px-4 py-3">
+                <span className="text-[13px] text-text-tertiary w-16 shrink-0">Brand</span>
                 <input
                   className="flex-1 min-w-0 bg-transparent text-[13px] font-medium text-text-primary outline-none border-none text-right"
                   placeholder="optional"
@@ -576,8 +576,8 @@ export function AddItemScreen() {
                   onChange={e => setBrand(e.target.value)}
                 />
               </div>
-              <div className="flex-1 flex items-center gap-2 bg-card rounded-[14px] px-4 py-3">
-                <span className="text-[13px] text-text-tertiary shrink-0">Price ₹</span>
+              <div className="flex items-center gap-3 bg-card rounded-[14px] px-4 py-3">
+                <span className="text-[13px] text-text-tertiary w-16 shrink-0">Price ₹</span>
                 <input
                   className="flex-1 min-w-0 bg-transparent text-[13px] font-medium text-text-primary outline-none border-none text-right"
                   placeholder="optional"
