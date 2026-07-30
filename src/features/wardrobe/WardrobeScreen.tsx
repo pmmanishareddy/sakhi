@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Filter, Plus, Droplets, Search, Wallet, X } from 'lucide-react'
 import { BottomNav } from '../../components/BottomNav'
@@ -21,6 +21,11 @@ const GROUPS: { label: string; cats: string[] }[] = [
   { label: 'Bags', cats: ['Bags'] },
   { label: 'Accessories', cats: ['Jewelry', 'Sunglasses', 'Watch', 'Belt', 'Scarf', 'Hat'] },
 ]
+
+// Persisted across item-detail round-trips (the screen remounts on navigation,
+// so component state alone would reset the tab and scroll to the top).
+let savedTab = 'all'
+let savedScroll = 0
 
 const norm = (s: string) => (s || '').trim().toLowerCase()
 
@@ -50,10 +55,20 @@ const TABS = [{ label: 'All', cat: 'all' }, ...GROUPS.map(g => ({ label: g.label
 
 export function WardrobeScreen() {
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState('all')
+  const [activeTab, setActiveTab] = useState(savedTab)
   const [toast, setToast] = useState('')
   const [showValue, setShowValue] = useState(false)
   const { items } = useWardrobe()
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Remember the active tab across remounts (item detail → back)
+  useEffect(() => { savedTab = activeTab }, [activeTab])
+
+  // Restore scroll position after the grid has painted
+  useLayoutEffect(() => {
+    const el = scrollRef.current
+    if (el) el.scrollTop = savedScroll
+  }, [])
 
   // Wardrobe value is on-demand only. Prices are optional, so a bare total would
   // undercount — always show it against how many items actually carry a price.
@@ -72,7 +87,11 @@ export function WardrobeScreen() {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      <div
+        ref={scrollRef}
+        onScroll={e => { savedScroll = e.currentTarget.scrollTop }}
+        className="flex-1 min-h-0 overflow-y-auto"
+      >
         {/* Header */}
         <div className="flex justify-between items-center px-6 pt-3 pb-1">
           <h1 className="text-[22px] font-bold tracking-tight">Wardrobe</h1>
