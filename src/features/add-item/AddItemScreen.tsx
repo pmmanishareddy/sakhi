@@ -5,7 +5,6 @@ import { Toast } from '../../components/Toast'
 import { useAuth } from '../../lib/auth'
 import { useWardrobe } from '../../lib/wardrobe-store'
 import { analyzeItemPhoto, addWardrobeItem, fileForAnalysis } from '../../lib/api'
-import { pairsWith } from '../../lib/style-rules'
 
 const CATEGORY_OPTIONS = ['T-Shirt', 'Top', 'Shirt', 'Blouse', 'Saree Blouse', 'Crop Top', 'Saree', 'Dress', 'Jumpsuit', 'Pants', 'Jeans', 'Shorts', 'Skirt', 'Leggings', 'Jacket', 'Blazer', 'Sweater', 'Hoodie', 'Kurta', 'Dupatta', 'Jewelry', 'Shoes', 'Sandals', 'Heels', 'Sneakers', 'Bags', 'Sunglasses', 'Watch', 'Belt', 'Scarf', 'Hat']
 import { COLOR_OPTIONS } from '../../lib/colors'
@@ -25,7 +24,7 @@ export function AddItemScreen() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user } = useAuth()
-  const { items, refresh } = useWardrobe()
+  const { refresh } = useWardrobe()
   const fileRef = useRef<HTMLInputElement>(null)
   const pendingAnalysis = useRef<ReturnType<typeof analyzeItemPhoto> | null>(null)
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -587,23 +586,6 @@ export function AddItemScreen() {
                 />
               </div>
             </div>
-
-            {/* Wardrobe matches */}
-            {items.length > 0 && category && (() => {
-              const newItem = { name: itemName, category, primary_color: color, formality, occasions, style_tags: styleTags }
-              const matching = items.filter(i => pairsWith(newItem, i))
-
-              if (matching.length === 0) return null
-              const names = matching.slice(0, 2).map(i => i.name).join(', ')
-              return (
-                <div className="mt-5 p-4 bg-accent-soft rounded-[16px]">
-                  <div className="text-[13px] font-semibold text-accent mb-1">Pairs well with</div>
-                  <div className="text-[12px] text-text-secondary leading-relaxed">
-                    Goes great with {names}{matching.length > 2 ? ` and ${matching.length - 2} more` : ''} in your wardrobe.
-                  </div>
-                </div>
-              )
-            })()}
 
             <button
               onClick={addToWardrobe}
