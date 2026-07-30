@@ -340,6 +340,11 @@ export function LogOutfitFlow() {
     } catch { /* toast anyway */ }
     setSaving(false)
 
+    // The wear-count trigger bumped times_worn / last_worn_at server-side. Pull
+    // the fresh rows so item detail and cost-per-wear reflect this wear instead
+    // of the stale cached copy.
+    if (user) refresh().catch(() => {})
+
     const hasNewItems = matchedResults && (matchedResults.new_items.length > 0 || rejectedMatches.length > 0)
     if (step === 3 && hasNewItems) {
       setToast('Outfit logged! Now crop items for your wardrobe')
