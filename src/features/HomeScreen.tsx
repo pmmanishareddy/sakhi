@@ -190,8 +190,6 @@ function GettingStarted({ itemCount, outfitCount, flags }: { itemCount: number; 
     }
   }, [flags])
 
-  if (dismissed || flags === null) return null
-
   const steps = [
     {
       done: outfitCount > 0,
@@ -218,20 +216,25 @@ function GettingStarted({ itemCount, outfitCount, flags }: { itemCount: number; 
   const doneCount = steps.filter(s => s.done).length
   const allDone = doneCount === steps.length
 
-  const finish = () => {
-    localStorage.setItem('sakhi_journey_done', 'true')
-    setAppFlag('journey_done')
-    setDismissed(true)
-  }
-
   // Completing the journey retires the card on its own — the congrats card
-  // shows this one time, and the persisted flag keeps it gone from then on
+  // shows this one time, and the persisted flag keeps it gone from then on.
+  // MUST run before any early return, or hook count changes between renders
+  // once flags load and the app crashes with React #310.
   useEffect(() => {
     if (allDone && !localStorage.getItem('sakhi_journey_done')) {
       localStorage.setItem('sakhi_journey_done', 'true')
       setAppFlag('journey_done')
     }
   }, [allDone])
+
+  const finish = () => {
+    localStorage.setItem('sakhi_journey_done', 'true')
+    setAppFlag('journey_done')
+    setDismissed(true)
+  }
+
+  // Every hook has run by here — safe to bail out on render
+  if (dismissed || flags === null) return null
 
   if (allDone) {
     return (
