@@ -18,6 +18,7 @@ import { MeetSakhi } from './features/onboarding/MeetSakhi'
 import { PrivacyScreen } from './features/onboarding/PrivacyScreen'
 import { useNavigate } from 'react-router-dom'
 import { getProfile } from './lib/api'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 // Replayable from Profile → "How Sakhi works"
 function MeetSakhiReplay() {
@@ -96,13 +97,15 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <WardrobeProvider>
-          <div className="app-shell">
-            <AppRoutes />
-          </div>
-        </WardrobeProvider>
-      </AuthProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <WardrobeProvider>
+            <div className="app-shell">
+              <AppRoutes />
+            </div>
+          </WardrobeProvider>
+        </AuthProvider>
+      </ErrorBoundary>
     </BrowserRouter>
   )
 }

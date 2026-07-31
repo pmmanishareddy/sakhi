@@ -35,6 +35,22 @@ navigator.serviceWorker?.addEventListener('controllerchange', () => {
   window.location.reload()
 })
 
+// Last-resort surface: if something throws before React renders any content,
+// #root stays empty and the installed app just looks blank. Show the error.
+function showBootError(msg: string) {
+  const root = document.getElementById('root')
+  if (root && root.childElementCount === 0) {
+    root.innerHTML =
+      '<div style="padding:24px;color:#eaeaea;background:#1a1a1a;font-family:system-ui;min-height:100%;box-sizing:border-box">' +
+      '<h2 style="font-size:18px;margin:0 0 8px">Startup error</h2>' +
+      '<pre style="white-space:pre-wrap;word-break:break-word;font-size:11px;background:#000;color:#ff9b8a;padding:12px;border-radius:10px">' +
+      String(msg).replace(/&/g, '&amp;').replace(/</g, '&lt;') +
+      '</pre></div>'
+  }
+}
+window.addEventListener('error', e => showBootError(e.error?.stack || e.message || String(e)))
+window.addEventListener('unhandledrejection', e => showBootError((e.reason && (e.reason.stack || e.reason.message)) || String(e.reason)))
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
