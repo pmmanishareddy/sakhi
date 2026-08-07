@@ -378,13 +378,13 @@ export async function uploadImage(file: File, folder: 'items' | 'outfits' | 'pro
 
 // ── AI Edge Functions ──
 
-async function callEdgeFunction<T>(name: string, body: Record<string, unknown>): Promise<T> {
+async function callEdgeFunction<T>(name: string, body: Record<string, unknown>, timeoutMs = 30000): Promise<T> {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
   const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
   const { data: { session } } = await supabase.auth.getSession()
 
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 30000)
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
 
   let res: Response
   try {
@@ -422,12 +422,21 @@ export async function analyzeItemPhoto(imageBase64: string, contentType: string)
   return res.analysis
 }
 
-export async function suggestOutfit(occasion: string, pinnedItemIds?: string[], excludeItemIds?: string[]): Promise<OutfitSuggestion> {
+export async function suggestOutfit(
+  occasion: string,
+  pinnedItemIds?: string[],
+  excludeItemIds?: string[],
+  opts?: { vibe?: string; occasionDetail?: string }
+): Promise<OutfitSuggestion> {
+  // The function may chain up to 3 model calls (parse retry + violation retry),
+  // so give it more room than the default 30s before aborting
   const res = await callEdgeFunction<{ outfit: OutfitSuggestion }>('suggest-outfit', {
     occasion,
     pinned_item_ids: pinnedItemIds,
     exclude_item_ids: excludeItemIds,
-  })
+    vibe: opts?.vibe,
+    occasion_detail: opts?.occasionDetail,
+  }, 60000)
   return res.outfit
 }
 
@@ -476,10 +485,11 @@ export async function getShopOptions(gap: NonNullable<GapCard['gap']>): Promise<
 }
 
 export async function matchOutfitPhoto(imageBase64: string, contentType: string): Promise<MatchResult> {
+  // Allows for the one-shot reformat retry when the model narrates instead of returning JSON
   const res = await callEdgeFunction<{ matches: MatchResult }>('match-outfit-photo', {
     image_base64: imageBase64,
     image_content_type: contentType,
-  })
+  }, 45000)
   return res.matches
 }
 

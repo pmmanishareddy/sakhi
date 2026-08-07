@@ -236,7 +236,7 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization')!
     const { user, supabase } = await getUser(authHeader)
 
-    const { occasion, pinned_item_ids, exclude_item_ids } = await req.json()
+    const { occasion, pinned_item_ids, exclude_item_ids, vibe, occasion_detail } = await req.json()
 
     const [{ data: items }, { data: recentOutfits }, { data: profile }] = await Promise.all([
       supabase.from('wardrobe_items')
@@ -269,13 +269,17 @@ serve(async (req) => {
       'Travel': ['Casual', 'Smart Casual'],
       'Brunch': ['Casual', 'Smart Casual'],
     }
-    const acceptableFormality = new Set(formalityMap[occasion] || ['Casual', 'Smart Casual'])
+    // Unmapped occasions ('Other') get no formality pre-filter — the user's own
+    // description decides, and the model judges from the full closet
+    const mappedFormality = formalityMap[occasion]
+    const acceptableFormality = new Set(mappedFormality || [])
 
     const alwaysInclude = new Set(['Shoes', 'Sandals', 'Heels', 'Sneakers', 'Bags', 'Jewelry', 'Dupatta', 'Sunglasses', 'Watch', 'Belt', 'Scarf', 'Hat'])
 
     let filtered = cleanItems.filter((i: any) =>
       pinnedSet.has(i.id) ||
       alwaysInclude.has(i.category) ||
+      !mappedFormality ||
       i.occasions?.includes(occasion) ||
       acceptableFormality.has(i.formality)
     )
@@ -285,14 +289,44 @@ serve(async (req) => {
       filtered = filtered.filter((i: any) => pinnedSet.has(i.id) || !isSareeBlouse(i))
     }
 
+    // Shuffle the inventory order so the model doesn't keep anchoring on the
+    // first-listed items — same closet, same occasion, same outfit every day
+    for (let i = filtered.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[filtered[i], filtered[j]] = [filtered[j], filtered[i]]
+    }
+
     const pipeItems = filtered.map((i: any) =>
       `${i.id}|${i.name}|${i.category}|${i.primary_color}|${i.pattern}|${i.formality}|${i.fabric || ''}|${styleOf(i)}`
     ).join('\n')
 
-    let userMessage = `Occasion: ${occasion}\nCurrent month: ${new Date().toLocaleString('en-US', { month: 'long' })}\n\nWardrobe (${filtered.length} items — id|name|category|color|pattern|formality|fabric|style[W=western,E=ethnic,V=versatile]):\n${pipeItems}`
+    let userMessage = `Occasion: ${occasion}${occasion_detail ? ` (the user describes it as: "${occasion_detail}")` : ''}\nCurrent month: ${new Date().toLocaleString('en-US', { month: 'long' })}\n\nWardrobe (${filtered.length} items — id|name|category|color|pattern|formality|fabric|style[W=western,E=ethnic,V=versatile]):\n${pipeItems}`
+
+    const VIBE_RULES: Record<string, string> = {
+      Pants: 'The outfit MUST use pants, jeans, or trousers as the bottom. Do not use dresses, skirts, sarees, or any one-piece.',
+      Dressy: 'Make it dressy: elevated, polished pieces with dressier footwear. Prefer the WESTERN DRESSY formula or elegant ethnic wear. No casual t-shirts, no sneakers.',
+      Ethnic: 'The outfit MUST be the ETHNIC style direction: only E and V items. Zero western pieces.',
+    }
+    if (vibe && VIBE_RULES[vibe]) {
+      userMessage += `\n\n## VIBE — the user asked for: ${vibe}\n${VIBE_RULES[vibe]}`
+    }
+
+    const anchorCategories = new Set(['T-Shirt', 'Top', 'Shirt', 'Blouse', 'Crop Top', 'Sweater', 'Hoodie', 'Kurta', 'Pants', 'Jeans', 'Shorts', 'Skirt', 'Leggings', 'Dress', 'Jumpsuit', 'Saree'])
+    const vibeAllowsAnchor = (i: any) =>
+      vibe === 'Ethnic' ? styleOf(i) !== 'W'
+      : vibe === 'Pants' ? !(ONE_PIECE_CATEGORIES.has(i.category) || isSaree(i))
+      : true
 
     if (pinned_item_ids?.length) {
       userMessage += `\n\nUser wants to include these items: ${pinned_item_ids.join(', ')}`
+    } else if (excludeSet.size === 0) {
+      // Fresh request with a free choice: nudge a random anchor so consecutive
+      // days don't converge on the same safe pick
+      const pool = filtered.filter((i: any) => anchorCategories.has(i.category) && vibeAllowsAnchor(i))
+      if (pool.length > 1) {
+        const pick = pool[Math.floor(Math.random() * pool.length)]
+        userMessage += `\n\nFor variety, build today's outfit around "${pick.name}" (id: ${pick.id}) as the anchor piece, unless it clearly cannot work for this occasion.`
+      }
     }
 
     if (recentOutfits?.length) {
@@ -319,19 +353,23 @@ serve(async (req) => {
     }
 
     if (excludeSet.size > 0) {
-      const anchorCategories = new Set(['T-Shirt', 'Top', 'Shirt', 'Blouse', 'Crop Top', 'Sweater', 'Hoodie', 'Kurta', 'Pants', 'Jeans', 'Shorts', 'Skirt', 'Leggings', 'Dress', 'Jumpsuit', 'Saree'])
       const previousNames = cleanItems.filter((i: any) => excludeSet.has(i.id)).map((i: any) => `${i.name} (${i.id})`).join(', ')
-      const notPrevious = cleanItems.filter((i: any) => !excludeSet.has(i.id) && anchorCategories.has(i.category))
+      const notPrevious = cleanItems.filter((i: any) => !excludeSet.has(i.id) && anchorCategories.has(i.category) && vibeAllowsAnchor(i))
       const occasionMatched = notPrevious.filter((i: any) => i.occasions?.includes(occasion))
       const alternateAnchors = occasionMatched.length > 0 ? occasionMatched : notPrevious
 
       userMessage += `\n\n## MANDATORY — DIFFERENT OUTFIT REQUIRED`
-      userMessage += `\nThe previous outfit used these items: ${previousNames}`
-      userMessage += `\nYou MUST NOT use any of those as the anchor piece.`
+      userMessage += `\nThe previous outfits used these items: ${previousNames}`
 
       if (alternateAnchors.length > 0) {
+        userMessage += `\nYou MUST NOT use any of those as the anchor piece.`
         const forced = alternateAnchors[Math.floor(Math.random() * alternateAnchors.length)]
         userMessage += `\nBuild this outfit around: "${forced.name}" (id: ${forced.id}) as the ANCHOR piece. This is non-negotiable.`
+      } else {
+        // Every anchor-worthy piece has been shown. An unmeetable "never reuse"
+        // mandate makes the model argue in prose instead of returning JSON,
+        // which is why "Try another look" used to die on the second retry.
+        userMessage += `\nEvery suitable anchor has been shown already, so reusing pieces is allowed, but the overall combination MUST differ from all previous outfits.`
       }
     }
 

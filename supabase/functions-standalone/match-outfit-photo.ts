@@ -43,7 +43,12 @@ async function callClaude(options: { system: string; messages: any[]; model?: st
 
 function parseJson(text: string) {
   if (!text) throw new Error('Empty response from Claude')
-  return JSON.parse(text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim())
+  let cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+  // Tolerate prose around the JSON ("I can see...") — extract from first bracket to last
+  const start = cleaned.search(/[{[]/)
+  const end = Math.max(cleaned.lastIndexOf('}'), cleaned.lastIndexOf(']'))
+  if (start >= 0 && end > start) cleaned = cleaned.slice(start, end + 1)
+  return JSON.parse(cleaned)
 }
 
 const SYSTEM_PROMPT = `You are Sakhi, a wardrobe AI. Given an outfit photo and the user's wardrobe inventory, identify visible clothing, footwear, bags, and jewelry the person is wearing.
@@ -94,7 +99,7 @@ Return JSON:
   "matched_items": [{"wardrobe_item_id": "uuid", "confidence": "high"|"medium"}],
   "new_items": [{"name": "descriptive name", "category": "one of: T-Shirt, Top, Shirt, Blouse, Saree Blouse, Crop Top, Saree, Dress, Jumpsuit, Pants, Jeans, Shorts, Skirt, Leggings, Jacket, Blazer, Sweater, Hoodie, Kurta, Dupatta, Jewelry, Shoes, Sandals, Heels, Sneakers, Bags", "style": "western"|"ethnic"|"versatile", "primary_color": "dominant color name", "color_hex": "#RRGGBB hex of the dominant color", "description": "brief description"}]
 }
-No markdown, no explanation.`
+Return ONLY the JSON. No markdown, no reasoning, no commentary. Your response must start with { and end with }.`
 
 serve(async (req) => {
   const corsHeaders = makeCorsHeaders(req.headers.get('origin'))
@@ -122,19 +127,33 @@ serve(async (req) => {
       `${i.id}|${i.name}|${i.subcategory || i.category}|${i.primary_color}|${i.pattern}|${i.fabric || ''}`
     ).join('\n')
 
-    const text = await callClaude({
+    const userContent = [
+      { type: 'image', source: { type: 'base64', media_type: image_content_type, data: image_base64 } },
+      { type: 'text', text: `Match visible items against my wardrobe (${items?.length || 0} items — id|name|category|color|pattern|fabric):\n${pipeItems}` },
+    ]
+
+    let text = await callClaude({
       system: SYSTEM_PROMPT,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: image_content_type, data: image_base64 } },
-          { type: 'text', text: `Match visible items against my wardrobe (${items?.length || 0} items — id|name|category|color|pattern|fabric):\n${pipeItems}` },
-        ],
-      }],
+      messages: [{ role: 'user', content: userContent }],
       maxTokens: 1024,
     })
 
-    const result = parseJson(text)
+    // If the model narrated instead of returning JSON, ask it once to reformat
+    let result
+    try {
+      result = parseJson(text)
+    } catch {
+      text = await callClaude({
+        system: SYSTEM_PROMPT,
+        messages: [
+          { role: 'user', content: userContent },
+          { role: 'assistant', content: text },
+          { role: 'user', content: 'Return ONLY the complete JSON object, no commentary. Start with { and end with }.' },
+        ],
+        maxTokens: 1024,
+      })
+      result = parseJson(text)
+    }
 
     const itemMap = new Map((items || []).map((i: any) => [i.id, i]))
     if (result.matched_items?.length) {

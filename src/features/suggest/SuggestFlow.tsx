@@ -19,6 +19,12 @@ const OCCASIONS = [
   { icon: '✨', name: 'Other' },
 ]
 
+const VIBES = [
+  { icon: '👖', name: 'Pants' },
+  { icon: '👠', name: 'Dressy' },
+  { icon: '🪷', name: 'Ethnic' },
+]
+
 const GENERATING_STEPS = [
   'Scanning your wardrobe...',
   'Matching colors & patterns...',
@@ -32,6 +38,8 @@ export function SuggestFlow() {
   const { items } = useWardrobe()
   const [step, setStep] = useState(0)
   const [occasion, setOccasion] = useState('')
+  const [occasionDetail, setOccasionDetail] = useState('')
+  const [vibe, setVibe] = useState('')
   const [genStep, setGenStep] = useState(0)
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
   const [toast, setToast] = useState('')
@@ -62,7 +70,10 @@ export function SuggestFlow() {
 
     try {
       if (user) {
-        const result = await suggestOutfit(occasion, pinnedIds, excludeIds)
+        const result = await suggestOutfit(occasion, pinnedIds, excludeIds, {
+          vibe: vibe || undefined,
+          occasionDetail: occasion === 'Other' ? occasionDetail.trim() || undefined : undefined,
+        })
         stepTimers.forEach(clearTimeout)
         if (!localStorage.getItem('sakhi_first_suggestion')) {
           localStorage.setItem('sakhi_first_suggestion', 'true')
@@ -71,7 +82,9 @@ export function SuggestFlow() {
         setSuggestion(result)
         const matchedItems = result.items
           .map(ri => items.find(i => i.id === ri.id))
-          .filter((i): i is DbWardrobeItem => i !== null)
+          // find() returns undefined, and undefined !== null slipped through
+          // here, crashing the results grid on a stale wardrobe cache
+          .filter((i): i is DbWardrobeItem => !!i)
         setResultItems(matchedItems)
         setAllSeenIds(prev => [...new Set([...prev, ...matchedItems.map(i => i.id)])])
         setStep(4)
@@ -80,7 +93,8 @@ export function SuggestFlow() {
     } catch (err) {
       console.error('Suggest outfit error:', err)
       stepTimers.forEach(clearTimeout)
-      setToast(err instanceof Error ? err.message : 'Suggestion failed')
+      const msg = err instanceof Error ? err.message : ''
+      setToast(msg && msg.length <= 80 ? msg : 'Could not build a look. Give it another go.')
       setStep(1)
       return
     }
@@ -138,7 +152,7 @@ export function SuggestFlow() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-2.5 mb-6">
+            <div className="grid grid-cols-2 gap-2.5 mb-4">
               {OCCASIONS.map(o => (
                 <button
                   key={o.name}
@@ -153,9 +167,41 @@ export function SuggestFlow() {
               ))}
             </div>
 
+            {occasion === 'Other' && (
+              <div className="mb-4 animate-fade-up">
+                <input
+                  className="w-full bg-card border border-border rounded-[14px] px-4 py-3.5 text-sm text-text-primary outline-none focus:border-accent transition-colors placeholder:text-text-tertiary"
+                  placeholder="What's happening? e.g. college reunion, temple visit"
+                  value={occasionDetail}
+                  onChange={e => setOccasionDetail(e.target.value)}
+                  maxLength={120}
+                />
+              </div>
+            )}
+
+            {/* Vibe: optional lean for the look */}
+            <div className="mb-6">
+              <p className="text-[12px] font-semibold text-text-tertiary uppercase tracking-wide mb-2">In the mood for</p>
+              <div className="flex gap-2">
+                {VIBES.map(v => (
+                  <button
+                    key={v.name}
+                    onClick={() => setVibe(vibe === v.name ? '' : v.name)}
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-3 rounded-[14px] border-[1.5px] bg-card cursor-pointer transition-all ${
+                      vibe === v.name ? 'border-accent bg-accent-soft' : 'border-transparent'
+                    }`}
+                  >
+                    <span className="text-base">{v.icon}</span>
+                    <span className={`text-[12px] font-semibold ${vibe === v.name ? 'text-text-primary' : 'text-text-secondary'}`}>{v.name}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-text-tertiary mt-1.5">Optional. Skip it and Sakhi decides.</p>
+            </div>
+
             <button
               onClick={() => setStep(1)}
-              disabled={!occasion}
+              disabled={!occasion || (occasion === 'Other' && !occasionDetail.trim())}
               className="w-full py-4 rounded-[14px] text-[15px] font-semibold bg-accent text-white border-none cursor-pointer active:scale-[0.97] transition-all disabled:opacity-35 disabled:pointer-events-none"
             >
               Next
@@ -167,7 +213,7 @@ export function SuggestFlow() {
         {step === 1 && (
           <div className="px-7 animate-fade-up">
             <h1 className="text-[22px] font-bold tracking-tight mb-2">How do you want to style?</h1>
-            <p className="text-sm text-text-tertiary mb-6 leading-relaxed">For your {occasion.toLowerCase()} look</p>
+            <p className="text-sm text-text-tertiary mb-6 leading-relaxed">For your {(occasion === 'Other' && occasionDetail.trim()) ? occasionDetail.trim().toLowerCase() : occasion.toLowerCase()} look</p>
 
             <div className="flex flex-col gap-3">
               <button
@@ -273,7 +319,7 @@ export function SuggestFlow() {
         {/* Step 4: Results */}
         {step === 4 && (
           <div className="px-7 animate-fade-up">
-            <h1 className="text-[22px] font-bold tracking-tight mb-1">Your {occasion.toLowerCase()} look</h1>
+            <h1 className="text-[22px] font-bold tracking-tight mb-1">Your {(occasion === 'Other' && occasionDetail.trim()) ? occasionDetail.trim().toLowerCase() : occasion.toLowerCase()} look</h1>
             <p className="text-sm text-text-tertiary mb-5">Built from your wardrobe</p>
 
             <div className="bg-card rounded-[18px] p-4 mb-4">
