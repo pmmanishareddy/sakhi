@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
-import { ArrowLeft, Camera, Image, LayoutGrid, Check, X, Plus, Calendar, Sparkles } from 'lucide-react'
+import { ArrowLeft, Camera, Image, LayoutGrid, Check, X, Plus, Calendar, Sparkles, Search } from 'lucide-react'
 import { Toast } from '../../components/Toast'
 import { useWardrobe } from '../../lib/wardrobe-store'
 import { useAuth } from '../../lib/auth'
@@ -158,6 +158,17 @@ export function LogOutfitFlow() {
   const [cropTarget, setCropTarget] = useState<null | { type: 'new'; croppedId: string; name: string; category: string; style?: string; primary_color?: string; color_hex?: string; description?: string }>(null)
   const [croppedIds, setCroppedIds] = useState<Set<string>>(new Set())
   const [saving, setSaving] = useState(false)
+  const [pickerQuery, setPickerQuery] = useState('')
+  const [pickerCategory, setPickerCategory] = useState('')
+
+  // Search + category filter for the item pickers — a closet quickly outgrows
+  // one long scroll
+  const pickerCategories = [...new Set(items.map(i => i.category))].sort()
+  const pickerQ = pickerQuery.trim().toLowerCase()
+  const pickerItems = items.filter(i =>
+    (!pickerCategory || i.category === pickerCategory) &&
+    (!pickerQ || `${i.name} ${i.category} ${i.primary_color}`.toLowerCase().includes(pickerQ))
+  )
 
   useEffect(() => {
     if (user) {
@@ -507,7 +518,7 @@ export function LogOutfitFlow() {
                   <span className="text-[10px] text-text-tertiary mt-1.5 w-[60px] text-center truncate">{m.name}</span>
                 </div>
               ))}
-              <button onClick={() => setShowAddPicker(true)} className="flex flex-col items-center shrink-0 bg-transparent border-none cursor-pointer p-0">
+              <button onClick={() => { setPickerQuery(''); setPickerCategory(''); setShowAddPicker(true) }} className="flex flex-col items-center shrink-0 bg-transparent border-none cursor-pointer p-0">
                 <div className="w-[60px] h-[60px] rounded-xl bg-card flex items-center justify-center border border-dashed border-white/10">
                   <Plus size={20} className="text-text-tertiary" />
                 </div>
@@ -560,25 +571,61 @@ export function LogOutfitFlow() {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5 px-5">
-              {items.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => togglePick(item.id)}
-                  className="relative aspect-[3/4] rounded-xl overflow-hidden cursor-pointer bg-card border-none active:scale-[0.96] transition-transform"
-                >
-                  <img src={item.image_url} alt={item.name} className="absolute inset-0 w-full h-full object-cover" />
-                  {selectedItems.has(item.id) && (
-                    <>
-                      <div className="absolute inset-0 bg-accent/30" />
-                      <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-accent flex items-center justify-center">
-                        <Check size={14} className="text-white" />
+            {/* What's picked so far, always in sight */}
+            {selectedItems.size > 0 && (
+              <div className="flex gap-3 px-5 overflow-x-auto pb-3" style={{ scrollbarWidth: 'none' }}>
+                {Array.from(selectedItems).map(id => {
+                  const item = items.find(i => i.id === id)
+                  if (!item) return null
+                  return (
+                    <div key={id} className="flex flex-col items-center shrink-0">
+                      <div className="w-[56px] h-[56px] rounded-xl overflow-hidden relative">
+                        <img src={item.image_url} alt="" className="w-full h-full object-cover" />
+                        <button
+                          onClick={() => togglePick(id)}
+                          className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 border-none flex items-center justify-center cursor-pointer"
+                        >
+                          <X size={11} className="text-white" />
+                        </button>
                       </div>
-                    </>
-                  )}
-                </button>
-              ))}
-            </div>
+                      <span className="text-[10px] text-text-tertiary mt-1 w-[56px] text-center truncate">{item.name}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            <PickerFilters
+              query={pickerQuery}
+              setQuery={setPickerQuery}
+              category={pickerCategory}
+              setCategory={setPickerCategory}
+              categories={pickerCategories}
+            />
+
+            {pickerItems.length === 0 ? (
+              <p className="px-7 py-10 text-center text-[13px] text-text-tertiary">Nothing matches that. Try a different search.</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2.5 px-5">
+                {pickerItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => togglePick(item.id)}
+                    className="relative aspect-[3/4] rounded-xl overflow-hidden cursor-pointer bg-card border-none active:scale-[0.96] transition-transform"
+                  >
+                    <img src={item.image_url} alt={item.name} className="absolute inset-0 w-full h-full object-cover" />
+                    {selectedItems.has(item.id) && (
+                      <>
+                        <div className="absolute inset-0 bg-accent/30" />
+                        <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-accent flex items-center justify-center">
+                          <Check size={14} className="text-white" />
+                        </div>
+                      </>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="h-8" />
           </div>
         )}
@@ -800,9 +847,16 @@ export function LogOutfitFlow() {
               Done
             </button>
           </div>
+          <PickerFilters
+            query={pickerQuery}
+            setQuery={setPickerQuery}
+            category={pickerCategory}
+            setCategory={setPickerCategory}
+            categories={pickerCategories}
+          />
           <div className="flex-1 min-h-0 overflow-y-auto">
             <div className="grid grid-cols-3 gap-2.5 px-5 pb-10">
-              {items.map(item => (
+              {pickerItems.map(item => (
                 <button
                   key={item.id}
                   onClick={() => togglePickerItem(item.id)}
@@ -838,6 +892,45 @@ export function LogOutfitFlow() {
       )}
 
       <Toast message={toast} visible={!!toast} onHide={() => setToast('')} />
+    </div>
+  )
+}
+
+function PickerFilters({ query, setQuery, category, setCategory, categories }: {
+  query: string
+  setQuery: (v: string) => void
+  category: string
+  setCategory: (v: string) => void
+  categories: string[]
+}) {
+  const chip = (active: boolean) =>
+    `shrink-0 px-3.5 py-2 rounded-xl text-[12px] font-medium border-none cursor-pointer transition-colors ${
+      active ? 'bg-accent text-white' : 'bg-card text-text-secondary'
+    }`
+  return (
+    <div className="shrink-0">
+      <div className="px-5 mb-2.5">
+        <div className="flex items-center gap-2.5 bg-card rounded-[14px] px-4 py-3">
+          <Search size={16} className="text-text-tertiary shrink-0" />
+          <input
+            className="flex-1 bg-transparent text-[13px] text-text-primary outline-none border-none placeholder:text-text-tertiary"
+            placeholder="Search by name, category, or color"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+          />
+          {query && (
+            <button onClick={() => setQuery('')} className="p-1 bg-transparent border-none cursor-pointer flex">
+              <X size={14} className="text-text-tertiary" />
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="flex gap-2 px-5 pb-3 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+        <button onClick={() => setCategory('')} className={chip(!category)}>All</button>
+        {categories.map(c => (
+          <button key={c} onClick={() => setCategory(category === c ? '' : c)} className={chip(category === c)}>{c}</button>
+        ))}
+      </div>
     </div>
   )
 }
