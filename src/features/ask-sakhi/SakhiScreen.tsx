@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Camera, Image, ArrowLeft, Check, XCircle, CheckCircle, AlertTriangle, Shirt, Search, BarChart3, ChevronDown, ChevronUp, Plus, ShoppingBag, ExternalLink, X, Wand2, Pencil } from 'lucide-react'
 import { BottomNav } from '../../components/BottomNav'
 import { Toast } from '../../components/Toast'
@@ -19,6 +19,7 @@ export function SakhiScreen() {
   const { user } = useAuth()
   const { items } = useWardrobe()
   const navigate = useNavigate()
+  const location = useLocation()
   const fileRef = useRef<HTMLInputElement>(null)
   const [view, setView] = useState<View>('main')
   const [scanStep, setScanStep] = useState(0)
@@ -48,6 +49,7 @@ export function SakhiScreen() {
       }).catch(() => {})
     }
   }, [user])
+
 
   const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -199,6 +201,30 @@ export function SakhiScreen() {
       setLoadingGaps(false)
       setRefreshingGaps(false)
     }
+  }
+
+  // Coming back from a "Fix it now" edit: reopen the gaps deck instead of
+  // dropping the user on the main Ask Sakhi view
+  const autoOpenedGaps = useRef(false)
+  useEffect(() => {
+    const wantsGaps = (location.state as { view?: string } | null)?.view === 'gaps'
+    if (wantsGaps && !autoOpenedGaps.current && items.length > 0) {
+      autoOpenedGaps.current = true
+      handleShowGaps()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items.length])
+
+  // "Fix it now" opens the first evidence item that still needs fixing. The
+  // stored card is older than any fix just made, so always opening
+  // evidence_ids[0] would reopen the same item forever.
+  const pickFixTarget = (ids: string[]) => {
+    const byId = new Map(items.map(i => [i.id, i]))
+    const pending = ids.filter(id => {
+      const it = byId.get(id)
+      return it && (!gapsAt || new Date(it.updated_at).getTime() <= new Date(gapsAt).getTime())
+    })
+    return pending[0] ?? ids.find(id => byId.has(id))
   }
 
   const resetInput = () => {
@@ -537,7 +563,10 @@ export function SakhiScreen() {
                 items={items}
                 onShop={gap => setShopFor(gap)}
                 onStyle={() => navigate('/suggest')}
-                onFix={id => id && navigate(`/item/${id}`)}
+                onFix={ids => {
+                  const id = pickFixTarget(ids)
+                  if (id) navigate(`/item/${id}`, { state: { from: 'gaps' } })
+                }}
               />
             )}
           </div>
@@ -614,7 +643,7 @@ function GapDeck({ cards, items, onShop, onStyle, onFix }: {
   items: DbWardrobeItem[]
   onShop: (card: GapCard) => void
   onStyle: (card: GapCard) => void
-  onFix: (itemId?: string) => void
+  onFix: (itemIds: string[]) => void
 }) {
   const [deckIndex, setDeckIndex] = useState(0)
   const deckRef = useRef<HTMLDivElement>(null)
@@ -721,7 +750,7 @@ function GapDeck({ cards, items, onShop, onStyle, onFix }: {
               )}
               {card.kind === 'fix' && (
                 <button
-                  onClick={() => onFix(card.evidence_ids[0])}
+                  onClick={() => onFix(card.evidence_ids)}
                   className="mt-4 w-full py-3.5 rounded-[13px] text-[14px] font-semibold bg-white/[0.06] text-text-primary border-none cursor-pointer active:scale-[0.97] transition-all flex items-center justify-center gap-2"
                 >
                   <Pencil size={15} /> Fix it now

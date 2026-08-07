@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Droplets, Pencil, Trash2, Check, ChevronDown, X, PenLine } from 'lucide-react'
 import { Toast } from '../../components/Toast'
 import { useWardrobe } from '../../lib/wardrobe-store'
@@ -15,6 +15,9 @@ const OCCASION_OPTIONS = ['Office', 'Casual', 'Weddings', 'Festivals', 'Date Nig
 export function ItemDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  // Opened from a gap card's "Fix it now": back returns to the gaps deck
+  const fromGaps = (useLocation().state as { from?: string } | null)?.from === 'gaps'
+  const goBack = () => fromGaps ? navigate('/sakhi', { state: { view: 'gaps' } }) : navigate('/wardrobe')
   const { items, refresh } = useWardrobe()
   const { user } = useAuth()
   const item = items.find(i => i.id === id)
@@ -75,8 +78,8 @@ export function ItemDetail() {
     // stats card (and anything else with overflow-hidden)
     <div className="h-full min-h-0 overflow-y-auto bg-bg">
       {/* Back */}
-      <button onClick={() => navigate('/wardrobe')} className="flex items-center gap-1 px-5 py-3 text-sm text-text-secondary bg-transparent border-none cursor-pointer">
-        <ArrowLeft size={18} /> Wardrobe
+      <button onClick={goBack} className="flex items-center gap-1 px-5 py-3 text-sm text-text-secondary bg-transparent border-none cursor-pointer">
+        <ArrowLeft size={18} /> {fromGaps ? 'Gaps' : 'Wardrobe'}
       </button>
 
       {/* Hero photo */}
