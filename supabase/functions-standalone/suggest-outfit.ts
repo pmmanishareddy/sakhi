@@ -255,8 +255,11 @@ serve(async (req) => {
     ])
 
     const cleanItems = (items || []).filter((i: any) => i.laundry_status === 'clean')
-    const excludeSet = new Set(exclude_item_ids || [])
     const pinnedSet = new Set(pinned_item_ids || [])
+    // A pinned piece must never also be excluded. "Try another look" sends back
+    // everything already shown, which includes the pinned pieces themselves, so
+    // without this the prompt says both "build around this" and "avoid this".
+    const excludeSet = new Set((exclude_item_ids || []).filter((id: string) => !pinnedSet.has(id)))
 
     // Occasion → acceptable formality mapping
     const formalityMap: Record<string, string[]> = {
@@ -361,7 +364,12 @@ serve(async (req) => {
       userMessage += `\n\n## MANDATORY — DIFFERENT OUTFIT REQUIRED`
       userMessage += `\nThe previous outfits used these items: ${previousNames}`
 
-      if (alternateAnchors.length > 0) {
+      if (pinnedSet.size > 0) {
+        // The user asked for a different look around the SAME pieces. Keeping
+        // the pinned items is not a repeat, changing everything else is the job.
+        userMessage += `\nKeep the pinned items in this outfit, they are the user's own choice and are not up for replacement.`
+        userMessage += `\nBuild a visibly different outfit around them: change the other pieces, and shift the overall look from the previous attempts.`
+      } else if (alternateAnchors.length > 0) {
         userMessage += `\nYou MUST NOT use any of those as the anchor piece.`
         const forced = alternateAnchors[Math.floor(Math.random() * alternateAnchors.length)]
         userMessage += `\nBuild this outfit around: "${forced.name}" (id: ${forced.id}) as the ANCHOR piece. This is non-negotiable.`

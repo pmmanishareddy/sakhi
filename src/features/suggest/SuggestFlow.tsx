@@ -57,14 +57,26 @@ export function SuggestFlow() {
   }, [user])
   const [, setSuggestion] = useState<OutfitSuggestion | null>(null)
   const [allSeenIds, setAllSeenIds] = useState<string[]>([])
+  // The pieces the user chose to style around. They must survive "Try another
+  // look", which is a request for a different outfit, not a different anchor.
+  const [pinnedIds, setPinnedIds] = useState<string[]>([])
 
   const selectOccasion = (name: string) => {
     setOccasion(name)
   }
 
-  const startGenerating = async (pinnedIds?: string[], excludeIds?: string[]) => {
+  // isRetry distinguishes "Try another look" from a fresh run. A fresh run
+  // starts the seen-list over, so picking a new occasion or new items is not
+  // handicapped by everything shown earlier.
+  const startGenerating = async (pinned: string[] = [], isRetry = false) => {
     setStep(3)
     setGenStep(0)
+    setPinnedIds(pinned)
+
+    // Never exclude a pinned piece. It would tell the server both to build
+    // around the item and to avoid it, and avoidance was winning.
+    const pinnedSet = new Set(pinned)
+    const excludeIds = isRetry ? allSeenIds.filter(id => !pinnedSet.has(id)) : []
 
     const stepTimers = GENERATING_STEPS.map((_, i) =>
       setTimeout(() => setGenStep(i), i * 700)
@@ -72,7 +84,7 @@ export function SuggestFlow() {
 
     try {
       if (user) {
-        const result = await suggestOutfit(occasion, pinnedIds, excludeIds, {
+        const result = await suggestOutfit(occasion, pinned.length ? pinned : undefined, excludeIds.length ? excludeIds : undefined, {
           vibe: vibe || undefined,
           occasionDetail: occasion === 'Other' ? occasionDetail.trim() || undefined : undefined,
         })
@@ -88,7 +100,7 @@ export function SuggestFlow() {
           // here, crashing the results grid on a stale wardrobe cache
           .filter((i): i is DbWardrobeItem => !!i)
         setResultItems(matchedItems)
-        setAllSeenIds(prev => [...new Set([...prev, ...matchedItems.map(i => i.id)])])
+        setAllSeenIds(prev => [...new Set([...(isRetry ? prev : []), ...matchedItems.map(i => i.id)])])
         setStep(4)
         return
       }
@@ -262,6 +274,7 @@ export function SuggestFlow() {
               <span className="text-[13px] text-text-secondary">{selectedItems.size} item{selectedItems.size !== 1 ? 's' : ''} selected</span>
               <button
                 onClick={() => startGenerating(Array.from(selectedItems))}
+                aria-label="Build outfit around the selected items"
                 disabled={selectedItems.size === 0}
                 className="px-4 py-2 rounded-xl text-[13px] font-semibold bg-accent text-white border-none cursor-pointer disabled:opacity-35 disabled:pointer-events-none"
               >
@@ -390,7 +403,11 @@ export function SuggestFlow() {
         {step === 4 && (
           <div className="px-7 animate-fade-up">
             <h1 className="text-[22px] font-bold tracking-tight mb-1">Your {(occasion === 'Other' && occasionDetail.trim()) ? occasionDetail.trim().toLowerCase() : occasion.toLowerCase()} look</h1>
-            <p className="text-sm text-text-tertiary mb-5">Built from your wardrobe</p>
+            <p className="text-sm text-text-tertiary mb-5">
+              {pinnedIds.length > 0
+                ? `Built around your ${pinnedIds.length === 1 ? 'pick' : `${pinnedIds.length} picks`}`
+                : 'Built from your wardrobe'}
+            </p>
 
             <div className="bg-card rounded-[18px] p-4 mb-4">
               <div className="flex items-center gap-2 mb-3">
@@ -399,8 +416,13 @@ export function SuggestFlow() {
               </div>
               <div className="grid grid-cols-4 gap-2 mb-4">
                 {resultItems.map((item) => (
-                  <div key={item.id} className="aspect-[3/4] rounded-xl overflow-hidden">
+                  <div key={item.id} className="aspect-[3/4] rounded-xl overflow-hidden relative">
                     <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                    {pinnedIds.includes(item.id) && (
+                      <span className="absolute bottom-0 inset-x-0 bg-accent/90 text-white text-[9px] font-semibold text-center py-0.5">
+                        Your pick
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -413,7 +435,7 @@ export function SuggestFlow() {
             </div>
 
             <button
-              onClick={() => startGenerating(undefined, allSeenIds)}
+              onClick={() => startGenerating(pinnedIds, true)}
               className="w-full flex items-center justify-center gap-2 py-3.5 rounded-[14px] text-[13px] font-medium text-text-secondary bg-card border-none cursor-pointer active:scale-[0.97] transition-transform"
             >
               <RefreshCw size={15} /> Try another look
