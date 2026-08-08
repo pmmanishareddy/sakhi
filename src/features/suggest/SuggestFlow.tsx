@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Sun, Sparkles, HandHeart, Check, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Sun, Sparkles, HandHeart, Check, RefreshCw, Search, X } from 'lucide-react'
+import { matchesQuery, searchTerms, sectionize } from '../../lib/categories'
 import { Toast } from '../../components/Toast'
 import { useWardrobe } from '../../lib/wardrobe-store'
 import { useAuth } from '../../lib/auth'
@@ -42,6 +43,7 @@ export function SuggestFlow() {
   const [vibe, setVibe] = useState('')
   const [genStep, setGenStep] = useState(0)
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
+  const [pickQuery, setPickQuery] = useState('')
   const [toast, setToast] = useState('')
   const [weather, setWeather] = useState<Weather | null>(null)
   const [resultItems, setResultItems] = useState<DbWardrobeItem[]>([])
@@ -99,6 +101,9 @@ export function SuggestFlow() {
       return
     }
   }
+
+  const pickTerms = searchTerms(pickQuery)
+  const pickSections = sectionize(items.filter(i => matchesQuery(i, pickTerms)))
 
   const togglePick = (id: string) => {
     const next = new Set(selectedItems)
@@ -264,25 +269,90 @@ export function SuggestFlow() {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5 px-5">
-              {items.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => togglePick(item.id)}
-                  className="relative aspect-[3/4] rounded-xl overflow-hidden cursor-pointer bg-card border-none active:scale-[0.96] transition-transform"
-                >
-                  <img src={item.image_url} alt={item.name} className="absolute inset-0 w-full h-full object-cover" />
-                  {selectedItems.has(item.id) && (
-                    <>
-                      <div className="absolute inset-0 bg-accent/30" />
-                      <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-accent flex items-center justify-center">
-                        <Check size={14} className="text-white" />
+            {/* Picked so far. A search can filter a selected item out of the
+                grid below, so this is the only place it stays visible. */}
+            {selectedItems.size > 0 && (
+              <div className="flex gap-3 px-5 overflow-x-auto pb-3" style={{ scrollbarWidth: 'none' }}>
+                {Array.from(selectedItems).map(id => {
+                  const item = items.find(i => i.id === id)
+                  if (!item) return null
+                  return (
+                    <div key={id} className="flex flex-col items-center shrink-0">
+                      <div className="w-[56px] h-[56px] rounded-xl overflow-hidden relative">
+                        <img src={item.image_url} alt="" className="w-full h-full object-cover" />
+                        <button
+                          onClick={() => togglePick(id)}
+                          aria-label={`Remove ${item.name}`}
+                          className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 border-none flex items-center justify-center cursor-pointer"
+                        >
+                          <X size={11} className="text-white" />
+                        </button>
                       </div>
-                    </>
-                  )}
-                </button>
-              ))}
+                      <span className="text-[10px] text-text-tertiary mt-1 w-[56px] text-center truncate">{item.name}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Search */}
+            <div className="px-5 mb-3">
+              <div className="flex items-center gap-2.5 bg-card rounded-[14px] px-4 py-3">
+                <Search size={16} className="text-text-tertiary shrink-0" />
+                <input
+                  value={pickQuery}
+                  onChange={e => setPickQuery(e.target.value)}
+                  placeholder="Search by name, colour, or fabric"
+                  aria-label="Search your wardrobe"
+                  autoComplete="off"
+                  className="flex-1 min-w-0 bg-transparent border-none outline-none text-[13px] text-text-primary placeholder:text-text-tertiary"
+                />
+                {pickQuery && (
+                  <button
+                    onClick={() => setPickQuery('')}
+                    aria-label="Clear search"
+                    className="shrink-0 p-0.5 bg-transparent border-none cursor-pointer flex items-center"
+                  >
+                    <X size={15} className="text-text-tertiary" />
+                  </button>
+                )}
+              </div>
             </div>
+
+            {pickSections.length === 0 ? (
+              <div className="px-7 py-12 text-center animate-fade-up">
+                <div className="text-[14px] text-text-secondary mb-1">Nothing matches "{pickQuery.trim()}"</div>
+                <div className="text-[12px] text-text-tertiary">Try a colour, a category, or part of the name.</div>
+              </div>
+            ) : (
+              pickSections.map(section => (
+                <div key={section.label} className="mb-4">
+                  <div className="flex items-baseline gap-2 px-6 mb-2">
+                    <span className="text-[12px] font-semibold text-text-tertiary uppercase tracking-wide">{section.label}</span>
+                    <span className="text-[11px] text-text-tertiary opacity-60">{section.items.length}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2.5 px-5">
+                    {section.items.map(item => (
+                      <button
+                        key={item.id}
+                        onClick={() => togglePick(item.id)}
+                        className="relative aspect-[3/4] rounded-xl overflow-hidden cursor-pointer bg-card border-none active:scale-[0.96] transition-transform"
+                      >
+                        <img src={item.image_url} alt={item.name} className="absolute inset-0 w-full h-full object-cover" />
+                        {selectedItems.has(item.id) && (
+                          <>
+                            <div className="absolute inset-0 bg-accent/30" />
+                            <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-accent flex items-center justify-center">
+                              <Check size={14} className="text-white" />
+                            </div>
+                          </>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
             <div className="h-8" />
           </div>
         )}

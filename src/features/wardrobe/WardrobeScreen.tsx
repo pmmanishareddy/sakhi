@@ -4,23 +4,7 @@ import { Filter, Plus, Droplets, Search, Wallet, X } from 'lucide-react'
 import { BottomNav } from '../../components/BottomNav'
 import { Toast } from '../../components/Toast'
 import { useWardrobe } from '../../lib/wardrobe-store'
-
-// Display groups. Each item's category is mapped into exactly one group so a
-// tab shows every item that belongs there — regardless of casing, stray spaces,
-// or a subcategory that leaked into the category (e.g. "Silk Saree"). Tops
-// (western) and ethnic Blouses are deliberately separate groups.
-const GROUPS: { label: string; cats: string[] }[] = [
-  { label: 'Sarees', cats: ['Saree'] },
-  { label: 'Blouses', cats: ['Saree Blouse'] },
-  { label: 'Tops', cats: ['Top', 'T-Shirt', 'Shirt', 'Blouse', 'Crop Top'] },
-  { label: 'Dresses', cats: ['Dress', 'Jumpsuit'] },
-  { label: 'Bottoms', cats: ['Pants', 'Jeans', 'Shorts', 'Skirt', 'Leggings'] },
-  { label: 'Ethnic', cats: ['Kurta', 'Dupatta'] },
-  { label: 'Outerwear', cats: ['Jacket', 'Blazer', 'Sweater', 'Hoodie'] },
-  { label: 'Footwear', cats: ['Shoes', 'Sandals', 'Heels', 'Sneakers'] },
-  { label: 'Bags', cats: ['Bags'] },
-  { label: 'Accessories', cats: ['Jewelry', 'Sunglasses', 'Watch', 'Belt', 'Scarf', 'Hat'] },
-]
+import { GROUP_LABELS, groupOf, matchesQuery, searchTerms } from '../../lib/categories'
 
 // Persisted across item-detail round-trips (the screen remounts on navigation,
 // so component state alone would reset the tab and scroll to the top).
@@ -28,42 +12,7 @@ let savedTab = 'all'
 let savedScroll = 0
 let savedQuery = ''
 
-// An item matches when every word typed appears somewhere in its searchable
-// text, so "green silk" finds a green silk saree regardless of word order.
-const searchText = (i: { name: string; category: string; primary_color: string; brand: string | null; fabric: string | null }) =>
-  `${i.name} ${i.category} ${i.primary_color} ${i.brand || ''} ${i.fabric || ''}`.toLowerCase()
-
-function matchesQuery(item: Parameters<typeof searchText>[0], terms: string[]): boolean {
-  if (terms.length === 0) return true
-  const text = searchText(item)
-  return terms.every(t => text.includes(t))
-}
-
-const norm = (s: string) => (s || '').trim().toLowerCase()
-
-const CAT_TO_GROUP = new Map<string, string>()
-for (const g of GROUPS) for (const c of g.cats) CAT_TO_GROUP.set(norm(c), g.label)
-
-// Map a raw category to its group. Exact (normalized) first, then a substring
-// fallback so mis-formatted or subcategory-style values still land somewhere
-// sensible instead of vanishing from every tab.
-function groupOf(category: string): string {
-  const n = norm(category)
-  const direct = CAT_TO_GROUP.get(n)
-  if (direct) return direct
-  if (n.includes('saree blouse') || (n.includes('blouse') && n.includes('saree'))) return 'Blouses'
-  if (n.includes('saree')) return 'Sarees'
-  if (n.includes('dress') || n.includes('gown') || n.includes('jumpsuit')) return 'Dresses'
-  if (n.includes('kurt') || n.includes('dupatta') || n.includes('lehenga') || n.includes('anarkali') || n.includes('salwar')) return 'Ethnic'
-  if (n.includes('blouse') || n.includes('shirt') || n.includes('top')) return 'Tops'
-  if (n.includes('jean') || n.includes('pant') || n.includes('trouser') || n.includes('skirt') || n.includes('short') || n.includes('legging')) return 'Bottoms'
-  if (n.includes('jacket') || n.includes('blazer') || n.includes('sweater') || n.includes('hoodie') || n.includes('coat')) return 'Outerwear'
-  if (n.includes('shoe') || n.includes('sandal') || n.includes('heel') || n.includes('sneaker') || n.includes('boot') || n.includes('flat')) return 'Footwear'
-  if (n.includes('bag') || n.includes('clutch') || n.includes('purse')) return 'Bags'
-  return 'Accessories'
-}
-
-const TABS = [{ label: 'All', cat: 'all' }, ...GROUPS.map(g => ({ label: g.label, cat: g.label }))]
+const TABS = [{ label: 'All', cat: 'all' }, ...GROUP_LABELS.map(label => ({ label, cat: label }))]
 
 export function WardrobeScreen() {
   const navigate = useNavigate()
@@ -93,7 +42,7 @@ export function WardrobeScreen() {
 
   // What you see is always tab AND search. Typing snaps the tab back to All
   // (see the input's onChange) so a search never hides matches behind a tab.
-  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  const terms = searchTerms(query)
   const filtered = items.filter(i =>
     (activeTab === 'all' || groupOf(i.category) === activeTab) && matchesQuery(i, terms)
   )
