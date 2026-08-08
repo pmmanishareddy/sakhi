@@ -40,6 +40,7 @@ export function SakhiScreen() {
   const [shopFor, setShopFor] = useState<GapCard | null>(null)
   const [pastVerdicts, setPastVerdicts] = useState<DbPurchaseVerdict[]>([])
   const [moneySaved, setMoneySaved] = useState(0)
+  const [savingVerdict, setSavingVerdict] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -112,8 +113,16 @@ export function SakhiScreen() {
     setTimeout(() => setView('main'), 3000)
   }
 
+  // Guards the insert against a double tap. The save takes a round trip (two,
+  // when a skipped item updates money_saved) and nothing on screen changes
+  // meanwhile, so a second tap was landing a duplicate row.
+  const savingRef = useRef(false)
+
   const saveVerdict = useCallback(async (action: 'bought' | 'skipped') => {
     if (!user || !verdictResult) return
+    if (savingRef.current) return
+    savingRef.current = true
+    setSavingVerdict(true)
     try {
       const saved = await savePurchaseVerdict({
         itemName: itemName || verdictResult.title || 'Unnamed item',
@@ -133,7 +142,11 @@ export function SakhiScreen() {
       }
     } catch {
       setToast('Could not save. Try again.')
+      // Only a failed save may be retried; a successful one stays locked so the
+      // buttons can't fire again before the view changes
+      savingRef.current = false
     }
+    setSavingVerdict(false)
   }, [user, verdictResult, itemName, itemPrice])
 
   const handleUserAction = async (action: 'bought' | 'skipped') => {
@@ -228,6 +241,9 @@ export function SakhiScreen() {
   }
 
   const resetInput = () => {
+    // A new item is a new save — release the double-tap lock
+    savingRef.current = false
+    setSavingVerdict(false)
     setItemPhoto(null)
     setItemPreview(null)
     setItemName('')
@@ -483,15 +499,17 @@ export function SakhiScreen() {
               <div className="flex gap-2.5 px-5 mb-8">
                 <button
                   onClick={() => handleUserAction('skipped')}
-                  className="flex-1 py-4 rounded-[14px] text-[15px] font-semibold bg-card text-text-primary border border-border cursor-pointer active:scale-[0.97] transition-transform"
+                  disabled={savingVerdict}
+                  className="flex-1 py-4 rounded-[14px] text-[15px] font-semibold bg-card text-text-primary border border-border cursor-pointer active:scale-[0.97] transition-transform disabled:opacity-50 disabled:pointer-events-none"
                 >
-                  Skipping it
+                  {savingVerdict ? 'Saving...' : 'Skipping it'}
                 </button>
                 <button
                   onClick={() => handleUserAction('bought')}
-                  className="flex-1 py-4 rounded-[14px] text-[15px] font-semibold bg-accent text-white border-none cursor-pointer active:scale-[0.97] transition-transform"
+                  disabled={savingVerdict}
+                  className="flex-1 py-4 rounded-[14px] text-[15px] font-semibold bg-accent text-white border-none cursor-pointer active:scale-[0.97] transition-transform disabled:opacity-50 disabled:pointer-events-none"
                 >
-                  Buying it
+                  {savingVerdict ? 'Saving...' : 'Buying it'}
                 </button>
               </div>
             ) : (

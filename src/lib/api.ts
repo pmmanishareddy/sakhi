@@ -703,14 +703,35 @@ export async function savePurchaseVerdict(input: {
   return data
 }
 
+// Collapses rows that are the same verdict saved twice within a few seconds —
+// the signature of a double-tapped save button. Deliberately narrow: the same
+// item legitimately re-evaluated later keeps its own entry.
+const DUPLICATE_WINDOW_MS = 15_000
+
+function dropDoubleSaves(rows: DbPurchaseVerdict[]): DbPurchaseVerdict[] {
+  return rows.filter((row, i) => {
+    const prev = rows[i - 1]
+    if (!prev) return true
+    const sameVerdict =
+      prev.item_name === row.item_name &&
+      prev.verdict === row.verdict &&
+      prev.action_taken === row.action_taken &&
+      prev.item_price === row.item_price
+    if (!sameVerdict) return true
+    const gap = new Date(prev.created_at).getTime() - new Date(row.created_at).getTime()
+    return !(gap >= 0 && gap < DUPLICATE_WINDOW_MS)
+  })
+}
+
 export async function fetchVerdictHistory(): Promise<DbPurchaseVerdict[]> {
+  // Over-fetch so collapsing duplicates doesn't leave a short list
   const { data, error } = await supabase
     .from('purchase_verdicts')
     .select('*')
     .order('created_at', { ascending: false })
-    .limit(20)
+    .limit(40)
   if (error) throw error
-  const rows = data ?? []
+  const rows = dropDoubleSaves(data ?? []).slice(0, 20)
   const map = await signUrls(rows.map(r => r.item_image_url))
   return rows.map(r => {
     const signed = r.item_image_url && map.get(r.item_image_url)
