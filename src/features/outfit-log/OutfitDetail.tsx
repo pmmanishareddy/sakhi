@@ -12,7 +12,7 @@ const OCCASIONS = ['Office', 'Casual', 'Party', 'Wedding', 'Date Night', 'Festiv
 export function OutfitDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { items } = useWardrobe()
+  const { items, refresh } = useWardrobe()
   const [outfit, setOutfit] = useState<OutfitWithItems | null>(null)
   const [showDelete, setShowDelete] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -100,6 +100,12 @@ export function OutfitDetail() {
       setEditing(false)
       setShowAddItems(false)
       setToast('Outfit updated')
+
+      // Adding or removing an item fires the wear-count trigger server-side, so
+      // times_worn / last_worn_at have changed. The wardrobe store only loads
+      // once, so without this the grid and item detail keep showing the old
+      // count until a full app reload.
+      if (toAdd.length > 0 || toRemove.length > 0) refresh().catch(() => {})
     } catch {
       setToast('Failed to save')
     } finally {

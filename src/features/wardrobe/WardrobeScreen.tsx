@@ -26,6 +26,18 @@ const GROUPS: { label: string; cats: string[] }[] = [
 // so component state alone would reset the tab and scroll to the top).
 let savedTab = 'all'
 let savedScroll = 0
+let savedQuery = ''
+
+// An item matches when every word typed appears somewhere in its searchable
+// text, so "green silk" finds a green silk saree regardless of word order.
+const searchText = (i: { name: string; category: string; primary_color: string; brand: string | null; fabric: string | null }) =>
+  `${i.name} ${i.category} ${i.primary_color} ${i.brand || ''} ${i.fabric || ''}`.toLowerCase()
+
+function matchesQuery(item: Parameters<typeof searchText>[0], terms: string[]): boolean {
+  if (terms.length === 0) return true
+  const text = searchText(item)
+  return terms.every(t => text.includes(t))
+}
 
 const norm = (s: string) => (s || '').trim().toLowerCase()
 
@@ -56,13 +68,15 @@ const TABS = [{ label: 'All', cat: 'all' }, ...GROUPS.map(g => ({ label: g.label
 export function WardrobeScreen() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState(savedTab)
+  const [query, setQuery] = useState(savedQuery)
   const [toast, setToast] = useState('')
   const [showValue, setShowValue] = useState(false)
   const { items } = useWardrobe()
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Remember the active tab across remounts (item detail → back)
+  // Remember the active tab and search across remounts (item detail → back)
   useEffect(() => { savedTab = activeTab }, [activeTab])
+  useEffect(() => { savedQuery = query }, [query])
 
   // Restore scroll position after the grid has painted
   useLayoutEffect(() => {
@@ -77,7 +91,12 @@ export function WardrobeScreen() {
   const unpriced = items.length - priced.length
   const fmtINR = (n: number) => '₹' + new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(n)
 
-  const filtered = activeTab === 'all' ? items : items.filter(i => groupOf(i.category) === activeTab)
+  // What you see is always tab AND search. Typing snaps the tab back to All
+  // (see the input's onChange) so a search never hides matches behind a tab.
+  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  const filtered = items.filter(i =>
+    (activeTab === 'all' || groupOf(i.category) === activeTab) && matchesQuery(i, terms)
+  )
   const laundryCount = items.filter(i => i.laundry_status === 'in_laundry').length
 
   const getTabCount = useCallback((cat: string) => {
@@ -123,8 +142,28 @@ export function WardrobeScreen() {
 
         {/* Search */}
         <div className="flex items-center gap-2.5 mx-6 mb-3.5 bg-card rounded-xl px-3.5 py-2.5">
-          <Search size={16} className="text-text-tertiary" />
-          <span className="text-[13px] text-text-tertiary">Search your wardrobe...</span>
+          <Search size={16} className="text-text-tertiary shrink-0" />
+          <input
+            value={query}
+            onChange={e => {
+              setQuery(e.target.value)
+              // A match in another category would otherwise look like no result
+              if (e.target.value.trim() && activeTab !== 'all') setActiveTab('all')
+            }}
+            placeholder="Search your wardrobe..."
+            aria-label="Search your wardrobe"
+            autoComplete="off"
+            className="flex-1 min-w-0 bg-transparent border-none outline-none text-[13px] text-text-primary placeholder:text-text-tertiary"
+          />
+          {query && (
+            <button
+              onClick={() => setQuery('')}
+              aria-label="Clear search"
+              className="shrink-0 p-0.5 bg-transparent border-none cursor-pointer flex items-center"
+            >
+              <X size={15} className="text-text-tertiary" />
+            </button>
+          )}
         </div>
 
         {/* Category tabs */}
@@ -168,6 +207,14 @@ export function WardrobeScreen() {
             >
               Or snap a single piece
             </button>
+          </div>
+        )}
+
+        {/* Nothing matched the search */}
+        {items.length > 0 && filtered.length === 0 && terms.length > 0 && (
+          <div className="px-7 py-12 text-center animate-fade-up">
+            <div className="text-[14px] text-text-secondary mb-1">Nothing matches "{query.trim()}"</div>
+            <div className="text-[12px] text-text-tertiary">Try a colour, a category, or part of the name.</div>
           </div>
         )}
 
