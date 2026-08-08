@@ -133,13 +133,28 @@ serve(async (req) => {
     }
     messageContent.push({ type: 'text', text: userMessage })
 
-    const text = await callClaude({
+    let text = await callClaude({
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: messageContent }],
       maxTokens: 1024,
     })
 
-    const verdict = parseJsonResponse(text)
+    // If the model narrated instead of returning JSON, ask it once to reformat
+    let verdict
+    try {
+      verdict = parseJsonResponse(text)
+    } catch {
+      text = await callClaude({
+        system: SYSTEM_PROMPT,
+        messages: [
+          { role: 'user', content: messageContent },
+          { role: 'assistant', content: text },
+          { role: 'user', content: 'Return ONLY the complete JSON object, no commentary. Start with { and end with }.' },
+        ],
+        maxTokens: 1024,
+      })
+      verdict = parseJsonResponse(text)
+    }
 
     return new Response(JSON.stringify({ success: true, verdict: stripEmDashes(verdict) }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

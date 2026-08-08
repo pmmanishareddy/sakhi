@@ -42,7 +42,13 @@ async function callClaude(options: { system: string; messages: any[]; model?: st
 }
 
 function parseJson(text: string) {
-  return JSON.parse(text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim())
+  if (!text) throw new Error('Empty response from Claude')
+  let cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+  // Tolerate prose around the JSON ("I can see...") — extract from first bracket to last
+  const start = cleaned.search(/[{[]/)
+  const end = Math.max(cleaned.lastIndexOf('}'), cleaned.lastIndexOf(']'))
+  if (start >= 0 && end > start) cleaned = cleaned.slice(start, end + 1)
+  return JSON.parse(cleaned)
 }
 
 const SYSTEM_PROMPT = `Analyze the clothing item in this image.

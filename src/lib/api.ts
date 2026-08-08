@@ -447,7 +447,8 @@ export async function getPurchaseVerdict(input: {
   item_name?: string
   item_price?: number
 }): Promise<VerdictResult> {
-  const res = await callEdgeFunction<{ verdict: VerdictResult }>('purchase-verdict', input)
+  // Reads a photo and the whole wardrobe, and may retry once for JSON-only output
+  const res = await callEdgeFunction<{ verdict: VerdictResult }>('purchase-verdict', input, 60000)
   return res.verdict
 }
 

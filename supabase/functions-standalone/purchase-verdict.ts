@@ -64,7 +64,11 @@ async function callClaude(options: { system: string; messages: any[]; model?: st
 
 function parseJson(text: string) {
   if (!text) throw new Error('Empty response from Claude')
-  const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+  let cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+  // Tolerate prose around the JSON ("I can see...") — extract from first bracket to last
+  const start = cleaned.search(/[{[]/)
+  const end = Math.max(cleaned.lastIndexOf('}'), cleaned.lastIndexOf(']'))
+  if (start >= 0 && end > start) cleaned = cleaned.slice(start, end + 1)
   try {
     return JSON.parse(cleaned)
   } catch (e) {
@@ -213,14 +217,30 @@ serve(async (req) => {
     messageContent.push({ type: 'text', text: userMessage })
 
     console.log(`[purchase-verdict] Calling Claude for verdict (message length ~${userMessage.length} chars)`)
-    const text = await callClaude({
+    let text = await callClaude({
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: messageContent }],
       maxTokens: 1024,
     })
 
     console.log(`[purchase-verdict] Got Claude response, parsing JSON...`)
-    const verdict = parseJson(text)
+    // If the model narrated instead of returning JSON, ask it once to reformat
+    let verdict
+    try {
+      verdict = parseJson(text)
+    } catch {
+      console.log('[purchase-verdict] Unparseable, asking for JSON-only reformat')
+      text = await callClaude({
+        system: SYSTEM_PROMPT,
+        messages: [
+          { role: 'user', content: messageContent },
+          { role: 'assistant', content: text },
+          { role: 'user', content: 'Return ONLY the complete JSON object, no commentary. Start with { and end with }.' },
+        ],
+        maxTokens: 1024,
+      })
+      verdict = parseJson(text)
+    }
     console.log(`[purchase-verdict] Verdict: ${verdict.verdict} - "${verdict.title}"`)
 
     console.log('[purchase-verdict] Success, returning verdict')
