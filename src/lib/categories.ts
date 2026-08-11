@@ -42,6 +42,18 @@ export function groupOf(category: string): string {
   return 'Accessories'
 }
 
+// When an outfit has no photo of its own, its cover comes from the pieces worn.
+// outfit_items comes back in insertion order, so without this the cover was
+// whichever item happened to be stored first — a bag or a pair of shoes is a
+// poor stand-in for a look. Order by how much a piece defines the outfit.
+const COVER_ORDER = ['Dresses', 'Sarees', 'Ethnic', 'Tops', 'Blouses', 'Bottoms', 'Outerwear', 'Footwear', 'Bags', 'Accessories']
+const COVER_RANK = new Map(COVER_ORDER.map((label, i) => [label, i]))
+
+export function byCoverPriority<T extends { category: string }>(items: T[]): T[] {
+  const rank = (c: string) => COVER_RANK.get(groupOf(c)) ?? COVER_ORDER.length
+  return [...items].sort((a, b) => rank(a.category) - rank(b.category))
+}
+
 // Free-text match used by the wardrobe search and the item pickers. Every word
 // typed must appear somewhere in the item's text, so "green silk" and
 // "silk green" both find the emerald silk saree.

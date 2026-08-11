@@ -4,6 +4,7 @@ import { ArrowLeft, Calendar, Users, Tag, Trash2, Pencil, X, Plus, Minus } from 
 import { Toast } from '../../components/Toast'
 import { useWardrobe } from '../../lib/wardrobe-store'
 import { fetchOutfitHistory, deleteOutfit, updateOutfit, addItemsToOutfit, removeItemFromOutfit, type OutfitWithItems, type OutfitItemSnapshot } from '../../lib/api'
+import { byCoverPriority } from '../../lib/categories'
 
 type DisplayItem = OutfitItemSnapshot & { id: string }
 
@@ -123,6 +124,10 @@ export function OutfitDetail() {
     ? [...editItemIds].map(resolveItem).filter(Boolean)
     : outfitItems
 
+  // The hero collage stands in for a missing outfit photo, so lead with the
+  // pieces that define the look rather than whichever item was stored first
+  const heroItems = byCoverPriority(displayItems.filter((i): i is DisplayItem => !!i))
+
   const addableItems = items.filter(i => !editItemIds.has(i.id))
 
   return (
@@ -131,11 +136,11 @@ export function OutfitDetail() {
       <div className="relative h-[50vh] shrink-0">
         {outfit.image_url ? (
           <img src={outfit.image_url} alt="" className="absolute inset-0 w-full h-full object-cover" />
-        ) : displayItems.length > 0 ? (
-          <div className={`absolute inset-0 grid ${displayItems.length === 1 ? 'grid-cols-1' : 'grid-cols-2'} gap-0.5`}>
-            {displayItems.slice(0, 4).map(item => (
-              <div key={item!.id} className="overflow-hidden">
-                <img src={item!.image_url} alt="" className="w-full h-full object-cover" />
+        ) : heroItems.length > 0 ? (
+          <div className={`absolute inset-0 grid ${heroItems.length === 1 ? 'grid-cols-1' : 'grid-cols-2'} gap-0.5`}>
+            {heroItems.slice(0, 4).map(item => (
+              <div key={item.id} className="overflow-hidden">
+                <img src={item.image_url} alt="" className="w-full h-full object-cover" />
               </div>
             ))}
           </div>

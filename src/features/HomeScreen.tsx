@@ -6,6 +6,7 @@ import { useWardrobe } from '../lib/wardrobe-store'
 import { useAuth } from '../lib/auth'
 import { fetchOutfitHistory, getProfile, setAppFlag, type OutfitWithItems } from '../lib/api'
 import { getWeather, type Weather } from '../lib/weather'
+import { byCoverPriority } from '../lib/categories'
 
 // Local calendar date; outfit.date from the DB may be the UTC day, so
 // "logged today" accepts either to avoid a midnight-window false negative
@@ -149,8 +150,13 @@ function OutfitCell({ outfit, items, onOpen }: {
   onOpen: () => void
 }) {
   // Joined snapshot keeps covers working even if the item was archived
-  const coverImage = outfit.image_url ||
-    outfit.outfit_items.map(oi => items.find(i => i.id === oi.wardrobe_item_id)?.image_url || oi.wardrobe_items?.image_url).find(Boolean)
+  const cellItems = outfit.outfit_items.flatMap(oi => {
+    const live = items.find(i => i.id === oi.wardrobe_item_id)
+    const image_url = live?.image_url || oi.wardrobe_items?.image_url
+    const category = live?.category || oi.wardrobe_items?.category
+    return image_url ? [{ image_url, category: category || '' }] : []
+  })
+  const coverImage = outfit.image_url || byCoverPriority(cellItems)[0]?.image_url
   const dateLabel = new Date(outfit.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   return (
     <div onClick={onOpen} className="rounded-xl overflow-hidden cursor-pointer active:scale-[0.97] transition-transform">
