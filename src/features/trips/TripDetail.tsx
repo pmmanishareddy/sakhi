@@ -1,13 +1,19 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus, X, Check, Trash2, Loader2, Shirt, Camera, StickyNote } from 'lucide-react'
+import {
+  DndContext, closestCenter, TouchSensor, MouseSensor, useSensor, useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { SortableContext, rectSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { Toast } from '../../components/Toast'
 import { PickerFilters } from '../../components/PickerFilters'
 import { useWardrobe } from '../../lib/wardrobe-store'
 import { groupOf, matchesQuery, searchTerms, byCoverPriority } from '../../lib/categories'
 import {
   fetchTrips, fetchOutfitHistory, addTripEntries, updateTripEntryNote,
-  removeTripEntry, renameTrip, deleteTrip,
+  removeTripEntry, renameTrip, deleteTrip, reorderTripEntries,
   type Trip, type TripEntry, type OutfitWithItems,
 } from '../../lib/api'
 
@@ -43,10 +49,39 @@ export function TripDetail() {
   const handleAdd = async (target: { itemIds?: string[]; outfitIds?: string[] }) => {
     setPicker(null)
     try {
-      await addTripEntries(id!, target)
+      // Land at the end so an addition never disturbs a hand-arranged order
+      await addTripEntries(id!, target, trip?.entries.length ?? 0)
       await load()
     } catch {
       setToast('Could not add that. Try again.')
+    }
+  }
+
+  // Touch and mouse are split deliberately. PointerSensor would have covered
+  // both, but it also fires for touch, so a 6px finger movement would start a
+  // drag and the grid could never be scrolled. TouchSensor's hold delay keeps
+  // scrolling as the default gesture and a deliberate hold as the exception.
+  const sensors = useSensors(
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+  )
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id || !trip) return
+
+    const from = trip.entries.findIndex(e => e.id === active.id)
+    const to = trip.entries.findIndex(e => e.id === over.id)
+    if (from < 0 || to < 0) return
+
+    const reordered = arrayMove(trip.entries, from, to)
+    const previous = trip.entries
+    setTrip({ ...trip, entries: reordered })
+    try {
+      await reorderTripEntries(reordered.map(e => e.id))
+    } catch {
+      setToast('Could not save that order')
+      setTrip(t => t && { ...t, entries: previous })
     }
   }
 
@@ -161,38 +196,31 @@ export function TripDetail() {
       {/* The grid. Three across, no gradient overlay, note as a caption that
           collapses when there isn't one — density is the whole point here. */}
       <div className="flex-1 min-h-0 overflow-y-auto px-4" onScroll={() => setConfirmDelete(false)}>
-        <div className="grid grid-cols-3 gap-1.5 items-start">
-          {trip.entries.map(entry => (
-            <button
-              key={entry.id}
-              onClick={() => setOpenEntry(entry)}
-              className="bg-transparent border-none p-0 cursor-pointer text-left active:scale-[0.96] transition-transform"
-            >
-              <div className="relative aspect-[4/5] rounded-lg overflow-hidden bg-card">
-                {entry.cover_url
-                  ? <img src={entry.cover_url} alt={entry.label} className="absolute inset-0 w-full h-full object-cover" />
-                  : <div className="absolute inset-0 flex items-center justify-center"><Shirt size={18} className="text-text-tertiary" /></div>}
-                {entry.outfit_id && (
-                  <span className="absolute top-1 left-1 text-[8px] font-bold uppercase tracking-wide bg-black/60 text-white/80 px-1.5 py-0.5 rounded">
-                    Look
-                  </span>
-                )}
-              </div>
-              {entry.note && (
-                <div className="text-[10px] text-text-secondary leading-tight mt-1 truncate">{entry.note}</div>
-              )}
-            </button>
-          ))}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={trip.entries.map(e => e.id)} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-3 gap-1.5 items-start">
+              {trip.entries.map(entry => (
+                <SortableTile key={entry.id} entry={entry} onOpen={() => setOpenEntry(entry)} />
+              ))}
 
-          {/* Add lives in the grid so it costs no vertical space of its own */}
-          <button
-            onClick={() => setPicker('item')}
-            aria-label="Add to list"
-            className="aspect-[4/5] rounded-lg border border-dashed border-white/12 bg-card/40 flex items-center justify-center cursor-pointer active:scale-[0.96] transition-transform"
-          >
-            <Plus size={20} className="text-text-tertiary" />
-          </button>
-        </div>
+              {/* Add lives in the grid so it costs no vertical space of its own.
+                  Outside SortableContext: it is not a thing you can reorder. */}
+              <button
+                onClick={() => setPicker('item')}
+                aria-label="Add to list"
+                className="aspect-[4/5] rounded-lg border border-dashed border-white/12 bg-card/40 flex items-center justify-center cursor-pointer active:scale-[0.96] transition-transform"
+              >
+                <Plus size={20} className="text-text-tertiary" />
+              </button>
+            </div>
+          </SortableContext>
+        </DndContext>
+
+        {trip.entries.length > 1 && (
+          <p className="text-[11px] text-text-tertiary text-center mt-3">
+            Hold a piece to move it
+          </p>
+        )}
 
         {trip.entries.length === 0 && (
           <p className="text-[12.5px] text-text-tertiary text-center leading-relaxed mt-6 px-6">
@@ -230,6 +258,49 @@ export function TripDetail() {
 
       <Toast message={toast} visible={!!toast} onHide={() => setToast('')} />
     </div>
+  )
+}
+
+// ── One tile: tap to open, hold to move ──
+
+function SortableTile({ entry, onOpen }: { entry: TripEntry; onOpen: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.id })
+
+  return (
+    <button
+      ref={setNodeRef}
+      onClick={onOpen}
+      {...attributes}
+      {...listeners}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        // Lifted tile rides above its neighbours while it moves
+        zIndex: isDragging ? 10 : undefined,
+        // Let the grid scroll normally; the sensor's hold delay claims the
+        // gesture only once a drag has actually begun
+        touchAction: 'manipulation',
+      }}
+      className={`relative bg-transparent border-none p-0 cursor-pointer text-left transition-transform ${
+        isDragging ? 'opacity-90 scale-[1.06]' : 'active:scale-[0.96]'
+      }`}
+    >
+      <div className={`relative aspect-[4/5] rounded-lg overflow-hidden bg-card ${
+        isDragging ? 'ring-2 ring-accent shadow-[0_10px_30px_rgba(0,0,0,0.55)]' : ''
+      }`}>
+        {entry.cover_url
+          ? <img src={entry.cover_url} alt={entry.label} draggable={false} className="absolute inset-0 w-full h-full object-cover" />
+          : <div className="absolute inset-0 flex items-center justify-center"><Shirt size={18} className="text-text-tertiary" /></div>}
+        {entry.outfit_id && (
+          <span className="absolute top-1 left-1 text-[8px] font-bold uppercase tracking-wide bg-black/60 text-white/80 px-1.5 py-0.5 rounded">
+            Look
+          </span>
+        )}
+      </div>
+      {entry.note && (
+        <div className="text-[10px] text-text-secondary leading-tight mt-1 truncate">{entry.note}</div>
+      )}
+    </button>
   )
 }
 

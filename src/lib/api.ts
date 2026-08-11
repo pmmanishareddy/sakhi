@@ -805,6 +805,7 @@ export interface TripEntry {
   id: string
   note: string | null
   created_at: string
+  position: number | null
   // Exactly one of these is set, enforced by a check constraint
   wardrobe_item_id: string | null
   outfit_id: string | null
@@ -828,7 +829,7 @@ export async function fetchTrips(): Promise<Trip[]> {
   const { data, error } = await supabase
     .from('trips')
     .select(`id, title, created_at, trip_entries(
-      id, note, created_at, wardrobe_item_id, outfit_id,
+      id, note, created_at, position, wardrobe_item_id, outfit_id,
       wardrobe_items(name, category, color_hex, image_url),
       outfits(occasion, date, image_url, outfit_items(wardrobe_items(category, image_url)))
     )`)
@@ -864,6 +865,7 @@ export async function fetchTrips(): Promise<Trip[]> {
           id: e.id,
           note: e.note,
           created_at: e.created_at,
+          position: e.position,
           wardrobe_item_id: e.wardrobe_item_id,
           outfit_id: e.outfit_id,
           wardrobe_items: e.wardrobe_items,
@@ -872,7 +874,12 @@ export async function fetchTrips(): Promise<Trip[]> {
           label: e.wardrobe_items?.name || e.outfits?.occasion || 'Outfit',
         }
       })
-      .sort((a, b) => a.created_at.localeCompare(b.created_at)),
+      // Hand-arranged order wins; anything without a position yet falls to the
+      // end in the order it was added
+      .sort((a, b) =>
+        (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER) ||
+        a.created_at.localeCompare(b.created_at)
+      ),
   }))
 }
 
@@ -899,16 +906,25 @@ export async function deleteTrip(tripId: string): Promise<void> {
   if (error) throw error
 }
 
+// startPosition is the list's current length, so additions land at the end
+// rather than jumping into the middle of a hand-arranged order.
 export async function addTripEntries(
   tripId: string,
-  target: { itemIds?: string[]; outfitIds?: string[] }
+  target: { itemIds?: string[]; outfitIds?: string[] },
+  startPosition = 0
 ): Promise<void> {
   const rows = [
     ...(target.itemIds ?? []).map(id => ({ trip_id: tripId, wardrobe_item_id: id })),
     ...(target.outfitIds ?? []).map(id => ({ trip_id: tripId, outfit_id: id })),
-  ]
+  ].map((row, i) => ({ ...row, position: startPosition + i }))
   if (rows.length === 0) return
   const { error } = await supabase.from('trip_entries').insert(rows)
+  if (error) throw error
+}
+
+// One round trip for the whole list rather than an update per tile
+export async function reorderTripEntries(orderedIds: string[]): Promise<void> {
+  const { error } = await supabase.rpc('reorder_trip_entries', { p_ids: orderedIds })
   if (error) throw error
 }
 
