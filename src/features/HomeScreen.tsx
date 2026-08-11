@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Wand2, Camera, PenLine, Sun, Check, ChevronRight, Sparkles, X } from 'lucide-react'
+import { Wand2, Camera, PenLine, Sun, Check, ChevronRight, Sparkles, X, Luggage } from 'lucide-react'
 import { BottomNav } from '../components/BottomNav'
 import { useWardrobe } from '../lib/wardrobe-store'
 import { useAuth } from '../lib/auth'
@@ -93,6 +93,7 @@ export function HomeScreen() {
           {[
             { icon: <Wand2 size={17} />, label: 'Style me', onClick: () => navigate('/suggest') },
             { icon: <Camera size={17} />, label: 'Snap a piece', onClick: () => navigate('/add-item') },
+            { icon: <Luggage size={17} />, label: 'Plan', onClick: () => navigate('/trips') },
           ].map((cta, i) => (
             <button
               key={i}

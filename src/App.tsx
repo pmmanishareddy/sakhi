@@ -17,6 +17,8 @@ import { ProfileScreen } from './features/profile/ProfileScreen'
 import { MeetSakhi } from './features/onboarding/MeetSakhi'
 import { PrivacyScreen } from './features/onboarding/PrivacyScreen'
 import { SharedWardrobe } from './features/share/SharedWardrobe'
+import { TripsScreen } from './features/trips/TripsScreen'
+import { TripDetail } from './features/trips/TripDetail'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { getProfile } from './lib/api'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -99,6 +101,8 @@ function AppRoutes() {
       <Route path="/suggest" element={<SuggestFlow />} />
       <Route path="/log-outfit" element={<LogOutfitFlow />} />
       <Route path="/outfit/:id" element={<OutfitDetail />} />
+      <Route path="/trips" element={<TripsScreen />} />
+      <Route path="/trips/:id" element={<TripDetail />} />
       <Route path="/profile" element={<ProfileScreen />} />
       <Route path="/welcome" element={<MeetSakhiReplay />} />
       <Route path="/privacy" element={<PrivacyScreen />} />

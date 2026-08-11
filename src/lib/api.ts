@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { byCoverPriority } from './categories'
 
 // ── Types ──
 
@@ -794,6 +795,134 @@ export async function getProfile(): Promise<DbProfile | null> {
     .single()
   if (error) throw error
   return data
+}
+
+// ── Trips ──
+
+export const MAX_TRIPS = 3
+
+export interface TripEntry {
+  id: string
+  note: string | null
+  created_at: string
+  // Exactly one of these is set, enforced by a check constraint
+  wardrobe_item_id: string | null
+  outfit_id: string | null
+  // Joined so an entry keeps rendering after its item is archived: the
+  // wardrobe store only holds active items, and archiving is a soft delete.
+  wardrobe_items: { name: string; category: string; color_hex: string; image_url: string } | null
+  outfits: { occasion: string; date: string; image_url: string | null } | null
+  // Filled in below for outfits with no photo of their own
+  cover_url: string
+  label: string
+}
+
+export interface Trip {
+  id: string
+  title: string
+  created_at: string
+  entries: TripEntry[]
+}
+
+export async function fetchTrips(): Promise<Trip[]> {
+  const { data, error } = await supabase
+    .from('trips')
+    .select(`id, title, created_at, trip_entries(
+      id, note, created_at, wardrobe_item_id, outfit_id,
+      wardrobe_items(name, category, color_hex, image_url),
+      outfits(occasion, date, image_url, outfit_items(wardrobe_items(category, image_url)))
+    )`)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+
+  type RawTrip = { id: string; title: string; created_at: string; trip_entries: any[] }
+  const raws = (data ?? []) as unknown as RawTrip[]
+
+  // An outfit logged by picking items has no photo, so fall back to its own
+  // pieces the same way the home screen does.
+  const coverOf = (e: any): string => {
+    if (e.wardrobe_items) return e.wardrobe_items.image_url
+    if (e.outfits?.image_url) return e.outfits.image_url
+    const items = (e.outfits?.outfit_items ?? [])
+      .map((oi: any) => oi.wardrobe_items)
+      .filter(Boolean) as { category: string; image_url: string }[]
+    return byCoverPriority(items)[0]?.image_url ?? ''
+  }
+
+  // One signing round-trip for the whole screen
+  const all = raws.flatMap(t => t.trip_entries.map(coverOf))
+  const map = await signUrls(all)
+
+  return raws.map(t => ({
+    id: t.id,
+    title: t.title,
+    created_at: t.created_at,
+    entries: t.trip_entries
+      .map(e => {
+        const cover = coverOf(e)
+        return {
+          id: e.id,
+          note: e.note,
+          created_at: e.created_at,
+          wardrobe_item_id: e.wardrobe_item_id,
+          outfit_id: e.outfit_id,
+          wardrobe_items: e.wardrobe_items,
+          outfits: e.outfits,
+          cover_url: map.get(cover) || cover,
+          label: e.wardrobe_items?.name || e.outfits?.occasion || 'Outfit',
+        }
+      })
+      .sort((a, b) => a.created_at.localeCompare(b.created_at)),
+  }))
+}
+
+export async function createTrip(title: string): Promise<Trip> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data, error } = await supabase
+    .from('trips')
+    .insert({ user_id: user.id, title: title.trim() })
+    .select('id, title, created_at')
+    .single()
+  if (error) throw error
+  return { ...data, entries: [] }
+}
+
+export async function renameTrip(tripId: string, title: string): Promise<void> {
+  const { error } = await supabase.from('trips').update({ title: title.trim() }).eq('id', tripId)
+  if (error) throw error
+}
+
+export async function deleteTrip(tripId: string): Promise<void> {
+  const { error } = await supabase.from('trips').delete().eq('id', tripId)
+  if (error) throw error
+}
+
+export async function addTripEntries(
+  tripId: string,
+  target: { itemIds?: string[]; outfitIds?: string[] }
+): Promise<void> {
+  const rows = [
+    ...(target.itemIds ?? []).map(id => ({ trip_id: tripId, wardrobe_item_id: id })),
+    ...(target.outfitIds ?? []).map(id => ({ trip_id: tripId, outfit_id: id })),
+  ]
+  if (rows.length === 0) return
+  const { error } = await supabase.from('trip_entries').insert(rows)
+  if (error) throw error
+}
+
+export async function updateTripEntryNote(entryId: string, note: string): Promise<void> {
+  const { error } = await supabase
+    .from('trip_entries')
+    .update({ note: note.trim() || null })
+    .eq('id', entryId)
+  if (error) throw error
+}
+
+export async function removeTripEntry(entryId: string): Promise<void> {
+  const { error } = await supabase.from('trip_entries').delete().eq('id', entryId)
+  if (error) throw error
 }
 
 // ── Wardrobe Sharing ──
