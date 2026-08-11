@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import { X, Loader2 } from 'lucide-react'
 import { fetchSharedWardrobe, type SharedWardrobe as Shared, type SharedItem } from '../../lib/api'
 import { sectionize } from '../../lib/categories'
@@ -31,7 +31,11 @@ const ERROR_COPY = {
 export function SharedWardrobe() {
   const { token } = useParams()
   const [state, setState] = useState<State>({ status: 'loading' })
-  const [open, setOpen] = useState<SharedItem | null>(null)
+  // The open item lives in the URL, not in state, so the phone's back button
+  // and back gesture close it instead of leaving the shared page altogether.
+  const [params, setParams] = useSearchParams()
+  const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     if (!token) {
@@ -83,6 +87,17 @@ export function SharedWardrobe() {
   const sections = sectionize(data.items)
   const heading = data.title || `${data.owner_name}'s wardrobe`
 
+  // An id that no longer matches anything just means no item is open
+  const open = data.items.find(i => i.id === params.get('item')) ?? null
+
+  const openItem = (item: SharedItem) => setParams({ item: item.id })
+
+  // Going back pops the entry we pushed, so history stays clean. Someone who
+  // opened the link with ?item= already has no entry to pop, so close by
+  // rewriting the URL in place rather than dropping them off the page.
+  const closeItem = () =>
+    location.key === 'default' ? setParams({}, { replace: true }) : navigate(-1)
+
   return (
     <div className="flex flex-col h-full min-h-0 bg-bg">
       <div className="flex-1 min-h-0 overflow-y-auto">
@@ -113,7 +128,7 @@ export function SharedWardrobe() {
               {section.items.map(item => (
                 <button
                   key={item.id}
-                  onClick={() => setOpen(item)}
+                  onClick={() => openItem(item)}
                   className="relative rounded-xl overflow-hidden cursor-pointer bg-card border-none card-press aspect-[3/4]"
                 >
                   <img
@@ -148,7 +163,7 @@ export function SharedWardrobe() {
       {open && (
         <div className="fixed inset-0 z-[100] bg-bg flex flex-col animate-fade-up">
           <button
-            onClick={() => setOpen(null)}
+            onClick={closeItem}
             aria-label="Close"
             className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-black/55 backdrop-blur-sm flex items-center justify-center border-none cursor-pointer"
           >
