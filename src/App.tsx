@@ -16,7 +16,8 @@ import { OutfitDetail } from './features/outfit-log/OutfitDetail'
 import { ProfileScreen } from './features/profile/ProfileScreen'
 import { MeetSakhi } from './features/onboarding/MeetSakhi'
 import { PrivacyScreen } from './features/onboarding/PrivacyScreen'
-import { useNavigate } from 'react-router-dom'
+import { SharedWardrobe } from './features/share/SharedWardrobe'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { getProfile } from './lib/api'
 import { ErrorBoundary } from './components/ErrorBoundary'
 
@@ -28,6 +29,7 @@ function MeetSakhiReplay() {
 
 function AppRoutes() {
   const { user, loading } = useAuth()
+  const { pathname } = useLocation()
   const [onboarded, setOnboarded] = useState(() => !!localStorage.getItem('sakhi_onboarded'))
   const [checkingProfile, setCheckingProfile] = useState(false)
 
@@ -46,6 +48,17 @@ function AppRoutes() {
       }).catch(() => {}).finally(() => setCheckingProfile(false))
     }
   }, [user, onboarded, markOnboarded])
+
+  // A shared wardrobe is public: it must render before any auth or onboarding
+  // gate, and identically whether the visitor is signed out, signed in, or
+  // halfway through onboarding.
+  if (pathname.startsWith('/s/')) {
+    return (
+      <Routes>
+        <Route path="/s/:token" element={<SharedWardrobe />} />
+      </Routes>
+    )
+  }
 
   if (loading || checkingProfile) {
     return (

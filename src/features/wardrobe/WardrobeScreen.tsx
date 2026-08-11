@@ -1,10 +1,11 @@
 import { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Filter, Plus, Droplets, Search, Wallet, X } from 'lucide-react'
+import { Filter, Plus, Droplets, Search, Wallet, X, Share2 } from 'lucide-react'
 import { BottomNav } from '../../components/BottomNav'
 import { Toast } from '../../components/Toast'
 import { useWardrobe } from '../../lib/wardrobe-store'
 import { GROUP_LABELS, groupOf, matchesQuery, searchTerms } from '../../lib/categories'
+import { ShareSheet } from './ShareSheet'
 
 // Persisted across item-detail round-trips (the screen remounts on navigation,
 // so component state alone would reset the tab and scroll to the top).
@@ -20,6 +21,7 @@ export function WardrobeScreen() {
   const [query, setQuery] = useState(savedQuery)
   const [toast, setToast] = useState('')
   const [showValue, setShowValue] = useState(false)
+  const [showShare, setShowShare] = useState(false)
   const { items } = useWardrobe()
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -64,6 +66,15 @@ export function WardrobeScreen() {
         <div className="flex justify-between items-center px-6 pt-3 pb-1">
           <h1 className="text-[22px] font-bold tracking-tight">Wardrobe</h1>
           <div className="flex items-center gap-3.5">
+            {items.length > 0 && (
+              <button
+                onClick={() => setShowShare(true)}
+                aria-label="Share wardrobe"
+                className="bg-transparent border-none cursor-pointer p-0 flex items-center"
+              >
+                <Share2 size={19} className="text-text-secondary" />
+              </button>
+            )}
             <button
               onClick={() => setShowValue(true)}
               aria-label="Wardrobe value"
@@ -245,6 +256,15 @@ export function WardrobeScreen() {
             )}
           </div>
         </div>
+      )}
+
+      {showShare && (
+        <ShareSheet
+          items={items}
+          initialGroup={activeTab}
+          onClose={() => setShowShare(false)}
+          onToast={setToast}
+        />
       )}
 
       <BottomNav />

@@ -796,6 +796,96 @@ export async function getProfile(): Promise<DbProfile | null> {
   return data
 }
 
+// ── Wardrobe Sharing ──
+
+// Links die on their own so there is nothing to manage. The share sheet still
+// offers an early "Stop sharing" for the case expiry can't cover: you sent the
+// wrong thing and want it dead now, not on Friday.
+export const SHARE_EXPIRY_DAYS = 7
+
+export interface ShareLink {
+  token: string
+  groups: string[]
+  title: string | null
+  expires_at: string
+  view_count: number
+  created_at: string
+}
+
+export interface SharedItem {
+  id: string
+  name: string
+  category: string
+  primary_color: string
+  color_hex: string
+  pattern: string
+  fabric: string | null
+  brand: string | null
+  image_url: string
+  group: string
+}
+
+export interface SharedWardrobe {
+  owner_name: string
+  title: string
+  groups: string[]
+  items: SharedItem[]
+}
+
+// Selections are stored sorted so {Sarees,Blouses} and {Blouses,Sarees} are the
+// same share and reopening the sheet finds the existing link either way.
+export const normalizeGroups = (groups: string[]): string[] => [...groups].sort()
+
+export const shareUrl = (token: string): string => `${window.location.origin}/s/${token}`
+
+export async function fetchLiveShares(): Promise<ShareLink[]> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data, error } = await supabase
+    .from('wardrobe_shares')
+    .select('token, groups, title, expires_at, view_count, created_at')
+    .eq('user_id', user.id)
+    .is('revoked_at', null)
+    .gt('expires_at', new Date().toISOString())
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data ?? []
+}
+
+export async function createShare(groups: string[], title: string): Promise<ShareLink> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const expires = new Date(Date.now() + SHARE_EXPIRY_DAYS * 24 * 3600 * 1000)
+  const { data, error } = await supabase
+    .from('wardrobe_shares')
+    .insert({
+      user_id: user.id,
+      groups: normalizeGroups(groups),
+      title: title.trim() || null,
+      expires_at: expires.toISOString(),
+    })
+    .select('token, groups, title, expires_at, view_count, created_at')
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function revokeShare(token: string): Promise<void> {
+  const { error } = await supabase
+    .from('wardrobe_shares')
+    .update({ revoked_at: new Date().toISOString() })
+    .eq('token', token)
+  if (error) throw error
+}
+
+// Public read. Runs with no session on the share page, so callEdgeFunction's
+// anon-key fallback is the auth path here.
+export async function fetchSharedWardrobe(token: string): Promise<SharedWardrobe> {
+  return callEdgeFunction<SharedWardrobe>('get-shared-wardrobe', { token }, 20000)
+}
+
 // ── Helpers ──
 
 function generateId(): string {
