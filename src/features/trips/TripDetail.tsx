@@ -68,6 +68,10 @@ export function TripDetail() {
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
+    // Belt and braces for the same iOS problem: if a hold did manage to start a
+    // selection, drop it here so the next drag starts from a clean slate
+    window.getSelection()?.removeAllRanges()
+
     if (!over || active.id === over.id || !trip) return
 
     const from = trip.entries.findIndex(e => e.id === active.id)
@@ -272,6 +276,7 @@ function SortableTile({ entry, onOpen }: { entry: TripEntry; onOpen: () => void 
       onClick={onOpen}
       {...attributes}
       {...listeners}
+      onContextMenu={e => e.preventDefault()}
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
@@ -281,7 +286,8 @@ function SortableTile({ entry, onOpen }: { entry: TripEntry; onOpen: () => void 
         // gesture only once a drag has actually begun
         touchAction: 'manipulation',
       }}
-      className={`relative bg-transparent border-none p-0 cursor-pointer text-left transition-transform ${
+      // .holdable carries the iOS long-press guards (see index.css)
+      className={`holdable relative bg-transparent border-none p-0 cursor-pointer text-left transition-transform ${
         isDragging ? 'opacity-90 scale-[1.06]' : 'active:scale-[0.96]'
       }`}
     >

@@ -159,6 +159,18 @@ input, textarea {
   box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
 }
 
+/* Anything you hold to drag. iOS reads a long press on an image as "select
+   this" or "save this" and opens its own callout, which leaves a selection
+   behind that swallows the next hold — so the first drag works and nothing
+   after it does. Authored here rather than inline because Chrome silently
+   drops -webkit-touch-callout from inline styles, while iOS honours it. */
+.holdable {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* Must stay in normal flow: absolute positioning would anchor to #root's
    padding box and sit under the status bar, ignoring the safe-area padding */
 .app-shell {
